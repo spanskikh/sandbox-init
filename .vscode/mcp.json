@@ -1,0 +1,22 @@
+{
+  "servers": {
+    "neuro-symbolic-verifier": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "compose",
+        "-f",
+        "${workspaceFolder}/docker-compose.yml",
+        "run",
+        "-i",
+        "-T",
+        "--rm",
+        "-e",
+        "FASTMCP_SHOW_CLI_BANNER=false",
+        "-e",
+        "NO_COLOR=1",
+        "verifier"
+      ]
+    }
+  }
+}
