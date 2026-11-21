@@ -12,6 +12,7 @@ from sandbox_init.contracts import (
     VerificationVerdict,
 )
 from sandbox_init.store import AuditStore
+from sandbox_init.telemetry import collect_memory_snapshot
 from sandbox_init.verifier import verify_allocation, verify_cluster_plan
 
 mcp = FastMCP("neuro-symbolic-verifier")
@@ -78,6 +79,21 @@ async def synthesize_valid_allocation(goal: str, max_iters: int = 5) -> dict[str
         "final_verdict": result.final_verdict.model_dump() if result.final_verdict else None,
         "history": [v.model_dump() for v in result.history],
     }
+
+
+@mcp.tool()
+def record_node_memory_telemetry(
+    node: str = "hippo",
+    min_headroom_gb: float = 4.0,
+) -> dict[str, object]:
+    """Collect live /proc/meminfo telemetry, check headroom, and persist to DuckDB."""
+    snap = collect_memory_snapshot(node=node, min_headroom_gb=min_headroom_gb)  # type: ignore[arg-type]
+    store = AuditStore(DB_PATH)
+    try:
+        store.record_snapshot(snap)
+    finally:
+        store.close()
+    return snap.model_dump()
 
 
 if __name__ == "__main__":

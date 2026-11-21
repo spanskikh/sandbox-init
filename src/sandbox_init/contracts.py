@@ -47,3 +47,14 @@ class ClusterVerdict(BaseModel):
     hippo_slack_gb: int | None = None
     rhino_slack_gb: int | None = None
     violations: list[str] = Field(default_factory=list)
+
+
+class NodeMemorySnapshot(BaseModel):
+    """Empirical host memory telemetry snapshot parsed from /proc/meminfo."""
+
+    node: Literal["hippo", "rhino"]
+    total_gb: float = Field(gt=0)
+    available_gb: float = Field(ge=0)
+    used_gb: float = Field(ge=0)
+    min_headroom_gb: float = Field(ge=0, default=4.0)
+    within_budget: bool

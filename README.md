@@ -27,6 +27,7 @@ flowchart LR
 * `check_cluster_allocation` — Validates single-node RAM allocation and logs verdict to `DuckDB`.
 * `check_cluster_plan` — Cross-node formal verification of `hippo` + `rhino` resource plan.
 * `synthesize_valid_allocation` — Autonomous CEGIS loop (Ollama + Z3) synthesizing a valid cluster placement.
+* `record_node_memory_telemetry` — Parses `/proc/meminfo`, checks headroom budget, and logs snapshot to `DuckDB`.
 
 ## Quickstart & QA Gate
 ```bash
