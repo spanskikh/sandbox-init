@@ -103,6 +103,6 @@ def verify_cluster_plan(plan: ClusterPlanProposal) -> ClusterVerdict:
         violations.append("rhino anti-affinity violated: llm_ram_gb > 6 and db_ram_gb > 4")
 
     if (HIPPO_MAX_RAM_GB - h_used) < 4 and (RHINO_MAX_RAM_GB - r_used) < 4:
-        violations.append("insufficient cluster dev headroom: at least one node needs >= 4 GiB free")
+        violations.append("insufficient dev headroom: at least one node needs >= 4 GiB free")
 
     return ClusterVerdict(status="UNSAT", plan=plan, violations=violations)
