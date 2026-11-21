@@ -7,6 +7,7 @@ dependencies = [
     "pydantic>=2.9.0",
     "duckdb>=1.1.0",
     "z3-solver>=4.13.0",
+    "httpx>=0.28.0",
 ]
 
 [project.optional-dependencies]
