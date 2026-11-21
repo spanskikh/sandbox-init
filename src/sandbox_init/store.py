@@ -4,7 +4,7 @@ from pathlib import Path
 
 import duckdb
 
-from sandbox_init.contracts import VerificationVerdict
+from sandbox_init.contracts import NodeMemorySnapshot, VerificationVerdict
 
 
 class AuditStore:
@@ -27,6 +27,42 @@ class AuditStore:
             )
             """
         )
+
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS node_memory_snapshots (
+                ts TIMESTAMP DEFAULT current_timestamp,
+                node VARCHAR NOT NULL,
+                total_gb DOUBLE NOT NULL,
+                available_gb DOUBLE NOT NULL,
+                used_gb DOUBLE NOT NULL,
+                min_headroom_gb DOUBLE NOT NULL,
+                within_budget BOOLEAN NOT NULL
+            )
+            """
+        )
+
+    def record_snapshot(self, snap: NodeMemorySnapshot) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO node_memory_snapshots (
+                node, total_gb, available_gb, used_gb, min_headroom_gb, within_budget
+            )
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                snap.node,
+                snap.total_gb,
+                snap.available_gb,
+                snap.used_gb,
+                snap.min_headroom_gb,
+                snap.within_budget,
+            ],
+        )
+
+    def count_snapshots(self) -> int:
+        row = self._conn.execute("SELECT COUNT(*) FROM node_memory_snapshots").fetchone()
+        return int(row[0]) if row else 0
 
     def record(self, verdict: VerificationVerdict) -> None:
         p = verdict.proposal
