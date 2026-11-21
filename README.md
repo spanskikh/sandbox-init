@@ -1,5 +1,7 @@
 # sandbox-init — Neuro-Symbolic Cluster & AI QA Baseline
 
+
+> **Change Management:** See [`CHANGELOG.md`](CHANGELOG.md) for formal Change Requests (`CR`), mitigated risks, and QA verification evidence.
 Zero-cost, local-first verification baseline for distributed systems and LLM agents running on a heterogeneous two-node Linux cluster (`hippo` 24 GiB RAM + `rhino` 16 GiB RAM) with zero external API dependencies.
 
 ## Cluster Repository Map
