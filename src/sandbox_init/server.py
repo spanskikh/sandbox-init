@@ -5,9 +5,14 @@ import os
 from fastmcp import FastMCP
 
 from sandbox_init.cegis import run_cegis_loop
-from sandbox_init.contracts import AllocationProposal, VerificationVerdict
+from sandbox_init.contracts import (
+    AllocationProposal,
+    ClusterPlanProposal,
+    NodeAllocation,
+    VerificationVerdict,
+)
 from sandbox_init.store import AuditStore
-from sandbox_init.verifier import verify_allocation
+from sandbox_init.verifier import verify_allocation, verify_cluster_plan
 
 mcp = FastMCP("neuro-symbolic-verifier")
 DB_PATH = os.getenv("AUDIT_DB_PATH", "/app/data/audit.duckdb")
@@ -21,7 +26,7 @@ def check_cluster_allocation(
     total_budget_gb: int,
     reserve_gb: int = 4,
 ) -> dict[str, object]:
-    """Валидирует гипотезу распределения RAM через Pydantic v2 + Z3 и пишет аудит в DuckDB."""
+    """Валидирует гипотезу распределения RAM одного узла через Pydantic v2 + Z3 + DuckDB."""
     proposal = AllocationProposal(
         node=node,  # type: ignore[arg-type]
         llm_ram_gb=llm_ram_gb,
@@ -36,6 +41,31 @@ def check_cluster_allocation(
     finally:
         store.close()
     return verdict.model_dump()
+
+
+@mcp.tool()
+def check_cluster_plan(
+    hippo_llm_gb: int,
+    hippo_db_gb: int,
+    rhino_llm_gb: int,
+    rhino_db_gb: int,
+    hippo_reserve_gb: int = 4,
+    rhino_reserve_gb: int = 3,
+) -> dict[str, object]:
+    """Проверяет кросс-узловой план размещения (hippo 24G + rhino 16G) через Z3."""
+    plan = ClusterPlanProposal(
+        hippo=NodeAllocation(
+            llm_ram_gb=hippo_llm_gb,
+            db_ram_gb=hippo_db_gb,
+            reserve_gb=hippo_reserve_gb,
+        ),
+        rhino=NodeAllocation(
+            llm_ram_gb=rhino_llm_gb,
+            db_ram_gb=rhino_db_gb,
+            reserve_gb=rhino_reserve_gb,
+        ),
+    )
+    return verify_cluster_plan(plan).model_dump()
 
 
 @mcp.tool()
