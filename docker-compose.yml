@@ -20,3 +20,14 @@ services:
     volumes:
       - ./data/ollama:/root/.ollama
     mem_limit: 8g
+
+  verifier:
+    build: .
+    image: sandbox-init-verifier:latest
+    pull_policy: never
+    profiles: ["tools"]
+    environment:
+      AUDIT_DB_PATH: /app/data/audit.duckdb
+    volumes:
+      - ./data:/app/data
+    mem_limit: 1g
