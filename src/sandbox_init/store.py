@@ -32,14 +32,25 @@ class AuditStore:
         p = verdict.proposal
         self._conn.execute(
             """
-            INSERT INTO verdicts (node, status, llm_ram_gb, db_ram_gb, total_budget_gb, slack_gb, counterexample)
+            INSERT INTO verdicts (
+                node, status, llm_ram_gb, db_ram_gb, total_budget_gb, slack_gb, counterexample
+            )
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            [p.node, verdict.status, p.llm_ram_gb, p.db_ram_gb, p.total_budget_gb, verdict.slack_gb, verdict.counterexample],
+            [
+                p.node,
+                verdict.status,
+                p.llm_ram_gb,
+                p.db_ram_gb,
+                p.total_budget_gb,
+                verdict.slack_gb,
+                verdict.counterexample,
+            ],
         )
 
     def count_by_status(self) -> dict[str, int]:
-        rows = self._conn.execute("SELECT status, COUNT(*) FROM verdicts GROUP BY status").fetchall()
+        query = "SELECT status, COUNT(*) FROM verdicts GROUP BY status"
+        rows = self._conn.execute(query).fetchall()
         return {str(status): int(cnt) for status, cnt in rows}
 
     def close(self) -> None:
