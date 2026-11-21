@@ -43,7 +43,7 @@ flowchart TB
 | **Z3 Specification Bugs** | Property-based testing via `Hypothesis` (310+ randomized boundary cases against Python oracles). | Expand property generators as new policy predicates are added. |
 | **Out-of-Memory (OOM)** | Formal Z3 RAM budget verification (`sandbox-init`), `mem_limit: 1g`, DuckDB `512MB` cap. | **[CR-001]** `/proc/meminfo` headroom telemetry collector persisted to DuckDB (`node_memory_snapshots`). |
 | **PII & DB Port Exposure** | 100% local inference; `rhino` PostgreSQL bound to loopback behind SSH tunnel. | Manage SSH tunnel (`15432 -> 5432`) via OpenRC/`autossh` for auto-recovery. |
-| **Write Race Conditions (TOCTOU)** | Atomic PostgreSQL transactions on check-in commit and `CLEAN -> DIRTY` transition. | Add DB-level `EXCLUDE USING gist` constraint on stay intervals. |
+| **Write Race Conditions (TOCTOU)** | Atomic PostgreSQL transactions on check-in commit and `CLEAN -> DIRTY` transition. | **[CR-004]** PostgreSQL `btree_gist` `EXCLUDE USING gist` constraint on `(bed_id, int4range(check_in_day, check_out_day, '[)'))` + `DIRTY -> CLEAN` housekeeping transition. |
 
 ## 4. QA Metrics & Business Outcomes Summary
 
@@ -52,4 +52,4 @@ flowchart TB
 | **`sandbox-init`** | Node RAM budgets, `rhino` anti-affinity, dev headroom `>= 4 GiB` | `8 passed`, 200 `Hypothesis` cases, `0` `mypy --strict` errors | Deterministic cluster capacity planning without OOM or cloud costs |
 | **`abstract-ops`** | Rule reachability, `ALLOW`/`DENY` disjointness, mandatory MFA | `5 passed`, 100% conflict detection, CEGIS convergence in 2 iters | Automated formal compliance auditing of access/underwriting policies |
 | **`interview-ops`** | Company, years, skills `<=` SSOT; explicit skill-gap separation | `4 passed`, hybrid RRF retrieval, CEGIS convergence in 2 iters | Hallucination-free CV tailoring with full local GDPR PII isolation |
-| **`hostel-ops`** | Zero-sum triple-entry balance, disjoint intervals, `CLEAN`-only check-in | `2 passed`, 80 `Hypothesis` cases, atomic `CLEAN -> DIRTY` update | Elimination of overbooking, dirty-room check-ins, and ledger drift |
+| **`hostel-ops`** | Zero-sum triple-entry balance, disjoint intervals, `CLEAN`-only check-in | `4 passed`, 80 `Hypothesis` cases, atomic `CLEAN -> DIRTY` update | Elimination of overbooking, dirty-room check-ins, and ledger drift |
