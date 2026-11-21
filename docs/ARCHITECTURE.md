@@ -1,12 +1,9 @@
 # System Architecture & Engineering Decision Records (Level 2)
 
-Единая архитектура локального нейро-символического кластера (`hippo` + `rhino`), объединяющая четыре репозитория (`sandbox-init`, `abstract-ops`, `interview-ops`, `hostel-ops`) в воспроизводимый конвейер верификации AI-агентов.
+Unified architecture of the local neuro-symbolic verification cluster (`hippo` + `rhino`), integrating [`sandbox-init`](https://github.com/spanskikh/sandbox-init), [`abstract-ops`](https://github.com/spanskikh/abstract-ops), [`interview-ops`](https://github.com/spanskikh/interview-ops), and [`hostel-ops`](https://github.com/spanskikh/hostel-ops).
 
----
-
-## 1. Межмашинная топология и слои Docker-образов
-
-Кластер построен на двух узлах Calculate Linux (Intel Core i5-9500, AVX2/FMA, без дискретной GPU) с жёстким разделением вычислительного и транзакционного контуров:
+## 1. Cross-Node Topology & Docker Layer Hierarchy
+Two Calculate Linux nodes (Intel Core i5-9500, AVX2/FMA, no discrete GPU) separate compute/reasoning from persistence:
 
 ```mermaid
 flowchart TB
@@ -16,73 +13,43 @@ flowchart TB
         DUCK[(DuckDB: Local Telemetry & Audit Logs)]
         MCP[FastMCP Servers: stdio]
     end
-
     subgraph tunnel [Encrypted Transport]
         SSH[SSH Local Forward: hippo:15432 -> rhino:127.0.0.1:5432]
     end
-
     subgraph rhino [Node: rhino — 16 GiB RAM / Persistence & Vector Store]
         PG_VEC[(PostgreSQL + pgvector: interview_ops RRF)]
         PG_TX[(PostgreSQL OLTP: hostel_ops Triple Ledger)]
     end
-
     OLLAMA <-->|Structured JSON / Counterexamples| Z3
     Z3 -->|SAT / UNSAT Metrics| DUCK
     Z3 <-->|SQL + Vector Queries| SSH
-    SSH <--> PG_VEC
-    SSH <--> PG_TX
+    SSH <--> PG_VEC & PG_TX
     MCP --- Z3
 ```
 
-### Дерево наследования локальных Docker-образов (`pull_policy: never`)
-Чтобы избежать дублирования зависимостей и ускорить инкрементальную сборку (~6 секунд на домен), образы выстроены в иерархию:
-1. `sandbox-init-verifier:latest` — базовый слой (`Python 3.12`, `FastMCP`, `Pydantic v2`, `Z3`, `DuckDB`, `Hypothesis`, `Ruff`, `MyPy`).
-2. `abstract-ops-auditor:latest` $\leftarrow$ наследует `sandbox-init-verifier:latest`.
-3. `interview-ops-rag:latest` $\leftarrow$ наследует `sandbox-init-verifier:latest` + `psycopg[binary]` + `pgvector`.
-4. `hostel-ops-ledger:latest` $\leftarrow$ наследует `interview-ops-rag:latest`.
-
----
+**Docker Image Inheritance (`pull_policy: never`):** `sandbox-init-verifier:latest` -> `abstract-ops-auditor:latest` & `interview-ops-rag:latest` -> `hostel-ops-ledger:latest` (~6s incremental builds).
 
 ## 2. Architecture Decision Records (ADR)
+* **ADR-001 (CEGIS + Z3 SMT over LLM-as-a-Judge):** LLM generates JSON proposals (`temperature=0.0`, fixed `seed`), while Z3 proves invariants (`SAT`) or returns minimal counterexamples (`UNSAT`) for iterative self-correction.
+* **ADR-002 (Lightweight Direct Stack):** Async `httpx`, `Pydantic v2` (`model_json_schema()`), `z3-solver`, and `FastMCP` without heavy orchestrators; domain workers stay within `mem_limit: 1g`.
+* **ADR-003 (Hybrid RRF Search):** Combines `nomic-embed-text` (768-d) cosine distance and `ts_rank_cd` (`GIN tsvector`) via Reciprocal Rank Fusion (`k=60`).
+* **ADR-004 (OLTP vs Audit Telemetry Split):** Transactional state lives in PostgreSQL on `rhino`; CEGIS audit metrics live in embedded `DuckDB` (`memory_limit='512MB'`) on `hippo`.
 
-### ADR-001: CEGIS + Z3 SMT вместо LLM-as-a-Judge
-* **Контекст:** Вероятностные метрики оценки LLM не дают формальных гарантий для финансовых проводок, контроля доступа и достоверности резюме.
-* **Решение:** Использовать паттерн **Counterexample-Guided Inductive Synthesis (CEGIS)**. LLM генерирует гипотезу в строгой JSON-схеме (`temperature=0.0`, фиксированный `seed`), а Z3 доказывает выполнение инвариантов (`SAT`) или возвращает минимальный контрпример (`UNSAT`), который подаётся в промпт следующей итерации.
-* **Последствия:** 100% отсечение недопустимых состояний перед записью в БД; детерминированная воспроизводимость регрессионных прогонов.
+## 3. Risk & Control Matrix
 
-### ADR-002: Отказ от монолитных LLM-фреймворков
-* **Контекст:** Жёсткий бюджет памяти (24 GiB + 16 GiB RAM) и требование прозрачности промптов/ошибок.
-* **Решение:** Прямая интеграция через асинхронный `httpx`, `Pydantic v2` (`model_json_schema()`), `z3-solver` и `FastMCP` без прослоек вроде LangChain.
-* **Последствия:** Контейнеры доменных сервисов укладываются в лимит `mem_limit: 1g`, а время холодного старта тестов составляет < 1.5 секунд.
-
-### ADR-003: Гибридный поиск Reciprocal Rank Fusion (RRF) в `pgvector`
-* **Контекст:** Чистый векторный поиск теряет точность на названиях компаний, кодах правил и датах.
-* **Решение:** Объединение косинусной близости эмбеддингов `nomic-embed-text` (768d) и полнотекстового ранга `ts_rank_cd` (`GIN tsvector`) по формуле $RRF(d) = \frac{1}{60 + r_{vec}(d)} + \frac{1}{60 + r_{fts}(d)}$.
-* **Последствия:** Устойчивое извлечение релевантных записей SSOT как по семантике задачи, так и по точным терминам.
-
-### ADR-004: Разделение OLTP (`PostgreSQL`) и телеметрии (`DuckDB`)
-* **Контекст:** Необходимость изолировать транзакционное состояние на `rhino` от локального анализа сходимости CEGIS на `hippo`.
-* **Решение:** Состояние доменов (`interview_ops`, `hostel_ops`) хранится в PostgreSQL на `rhino`, а журналы аудита и контрпримеров — в встраиваемом `DuckDB` (`memory_limit='512MB'`) на `hippo`.
-
----
-
-## 3. Матрица рисков и контролей
-
-| Категория риска | Механизм митигации (реализовано) | Остаточный риск и план закрытия |
+| Risk Category | Implemented Mitigation | Residual Risk & Planned Hardening |
 | :--- | :--- | :--- |
-| **Галлюцинации и сдвиг фактов LLM** | Z3-проверка принадлежности навыков $\subseteq$ SSOT, равенства дат/компаний и нулевого баланса проводок. | Свободный текст `bullet_text` в `interview-ops` $\rightarrow$ добавить regex/AST-экстрактор сущностей в Z3-гейт. |
-| **Ошибка в формальной спецификации Z3** | Property-based тестирование через `Hypothesis` (310+ случайных конфигураций против Python-оракула). | Расширять генераторы при добавлении новых типов бизнес-правил. |
-| **Out-of-Memory (OOM) на узлах** | Z3-модель бюджетов RAM (`sandbox-init`), `mem_limit: 1g` в Docker, лимит 512 МБ в DuckDB. | Добавить фоновый коллектор `/proc/meminfo` и `docker stats` в DuckDB. |
-| **Утечка ПДн и портов БД** | 100% локальный инференс без облачных API; доступ к Postgres на `rhino` только через SSH-туннель. | Перевести SSH-туннель `15432 -> 5432` под управление OpenRC/`autossh` для автоподъёма после ребута. |
-| **Гонка при записи (TOCTOU)** | Атомарные транзакции PostgreSQL при фиксации заезда и смене статуса `CLEAN -> DIRTY`. | Добавить ограничение уровня БД `EXCLUDE USING gist` на интервалы бронирования койки. |
+| **LLM Hallucinations & Fact Drift** | Z3 enforcement of `claimed_skills <= ssot.skills`, entity/year lock, and zero-sum ledger balance. | Free-text `bullet_text` in `interview-ops` -> add regex/AST entity extraction into Z3 gate. |
+| **Z3 Specification Bugs** | Property-based testing via `Hypothesis` (310+ randomized boundary cases against Python oracles). | Expand property generators as new policy predicates are added. |
+| **Out-of-Memory (OOM)** | Formal Z3 RAM budget verification (`sandbox-init`), `mem_limit: 1g`, DuckDB `512MB` cap. | Add `/proc/meminfo` and `docker stats` collector into DuckDB. |
+| **PII & DB Port Exposure** | 100% local inference; `rhino` PostgreSQL bound to loopback behind SSH tunnel. | Manage SSH tunnel (`15432 -> 5432`) via OpenRC/`autossh` for auto-recovery. |
+| **Write Race Conditions (TOCTOU)** | Atomic PostgreSQL transactions on check-in commit and `CLEAN -> DIRTY` transition. | Add DB-level `EXCLUDE USING gist` constraint on stay intervals. |
 
----
+## 4. QA Metrics & Business Outcomes Summary
 
-## 4. Сводная таблица QA-метрик и бизнес-результатов
-
-| Домен / Репозиторий | Ключевые Z3-инварианты | QA-метрики верификации | Бизнес-результат |
+| Domain | Verified Z3 Invariants | QA & Verification Metrics | Business Outcome |
 | :--- | :--- | :--- | :--- |
-| **`sandbox-init`** | Бюджеты RAM узлов, anti-affinity `rhino`, dev headroom $\ge 4$ GiB | `6 passed`, 150 кейсов `Hypothesis`, `0` ошибок `mypy --strict` | Детерминированное планирование кластера без OOM и облачных затрат |
-| **`abstract-ops`** | Достижимость правил, отсутствие коллизий `ALLOW/DENY`, обязательность MFA | `5 passed`, 100% отлов конфликтов, сходимость CEGIS за 2 итерации | Автоматический формальный аудит политик доступа и комплаенса |
-| **`interview-ops`** | Компании, годы и навыки $\subseteq$ SSOT; честный вынос skill gaps | `2 passed`, гибридный RRF-поиск, сходимость CEGIS за 2 итерации | Защита от галлюцинаций в резюме и сохранность ПДн в локальном контуре |
-| **`hostel-ops`** | Баланс тройной записи ($\sum = 0$), непересечение интервалов, заезд только в `CLEAN` | `2 passed`, 80 кейсов `Hypothesis`, атомарный переход `CLEAN -> DIRTY` | Исключение овербукинга, заселения в грязные номера и ошибок кассы |
+| **`sandbox-init`** | Node RAM budgets, `rhino` anti-affinity, dev headroom `>= 4 GiB` | `6 passed`, 150 `Hypothesis` cases, `0` `mypy --strict` errors | Deterministic cluster capacity planning without OOM or cloud costs |
+| **`abstract-ops`** | Rule reachability, `ALLOW`/`DENY` disjointness, mandatory MFA | `5 passed`, 100% conflict detection, CEGIS convergence in 2 iters | Automated formal compliance auditing of access/underwriting policies |
+| **`interview-ops`** | Company, years, skills `<=` SSOT; explicit skill-gap separation | `2 passed`, hybrid RRF retrieval, CEGIS convergence in 2 iters | Hallucination-free CV tailoring with full local GDPR PII isolation |
+| **`hostel-ops`** | Zero-sum triple-entry balance, disjoint intervals, `CLEAN`-only check-in | `2 passed`, 80 `Hypothesis` cases, atomic `CLEAN -> DIRTY` update | Elimination of overbooking, dirty-room check-ins, and ledger drift |

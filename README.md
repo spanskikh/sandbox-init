@@ -1,9 +1,14 @@
 # sandbox-init — Neuro-Symbolic Cluster & AI QA Baseline
 
-Базовая платформа для локальной верификации распределённых систем и LLM-агентов на двух-узловом кластере (`hippo` 24 GiB RAM + `rhino` 16 GiB RAM) без облачных зависимостей.
+Zero-cost, local-first verification baseline for distributed systems and LLM agents running on a heterogeneous two-node Linux cluster (`hippo` 24 GiB RAM + `rhino` 16 GiB RAM) with zero external API dependencies.
 
-## Архитектура контура
+## Cluster Repository Map
+* **System Design & ADRs:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Cross-node topology, Docker layer hierarchy, risk matrix, and QA metrics.
+* **Domain 1 — Policy & Compliance Auditor:** [`spanskikh/abstract-ops`](https://github.com/spanskikh/abstract-ops) — Formal Z3 verification of RBAC/underwriting rule-sets via CEGIS.
+* **Domain 2 — Grounded Hybrid RAG & Fact-Checker:** [`spanskikh/interview-ops`](https://github.com/spanskikh/interview-ops) — `pgvector` + `tsvector` RRF search with Z3 SSOT anti-hallucination gate.
+* **Domain 3 — Triple-Entry Transactional Ledger:** [`spanskikh/hostel-ops`](https://github.com/spanskikh/hostel-ops) — Triple-entry accounting, anti-overbooking, and housekeeping state machine.
 
+## Verification Loop Architecture
 ```mermaid
 flowchart LR
     LLM[Ollama: qwen2.5-coder:7b] -->|JSON Schema Proposal| PYD[Pydantic v2 Contract]
@@ -13,17 +18,17 @@ flowchart LR
     HYP[Hypothesis Property Tests] -.->|150+ Random Topologies| Z3
 ```
 
-## Формальные инварианты (Z3)
-* **Бюджеты узлов:** `h_llm + h_db + h_res <= 24 GiB` (`h_res >= 4 GiB`) и `r_llm + r_db + r_res <= 16 GiB` (`r_res >= 3 GiB`).
-* **Anti-Affinity на `rhino`:** `Implies(r_llm > 6, r_db <= 4)` — защита от OOM при совместном размещении БД и моделей.
-* **Dev Headroom:** минимум на одном узле гарантировано >= 4 GiB свободной памяти для сборки и тестов.
+## Formal Invariants (Z3)
+* **Node Memory Budgets:** `h_llm + h_db + h_res <= 24 GiB` (`h_res >= 4 GiB`) and `r_llm + r_db + r_res <= 16 GiB` (`r_res >= 3 GiB`).
+* **Anti-Affinity on `rhino`:** `Implies(r_llm > 6, r_db <= 4)` — prevents OOM when co-locating database and model workloads.
+* **Dev Headroom:** Guarantees at least one node retains `>= 4 GiB` free RAM for builds and test suites.
 
-## MCP-инструменты (`FastMCP` / `stdio`)
-* `check_cluster_allocation` — проверка распределения RAM одного узла с записью вердикта в `DuckDB`.
-* `check_cluster_plan` — кросс-узловая верификация конфигурации `hippo` + `rhino`.
-* `synthesize_valid_allocation` — автономный цикл CEGIS (Ollama + Z3) для синтеза валидного плана размещения.
+## MCP Tools (`FastMCP` / `stdio`)
+* `check_cluster_allocation` — Validates single-node RAM allocation and logs verdict to `DuckDB`.
+* `check_cluster_plan` — Cross-node formal verification of `hippo` + `rhino` resource plan.
+* `synthesize_valid_allocation` — Autonomous CEGIS loop (Ollama + Z3) synthesizing a valid cluster placement.
 
-## Запуск и QA-гейт
+## Quickstart & QA Gate
 ```bash
 docker compose build verifier
 docker compose run --rm verifier sh -c "ruff check src tests && mypy src tests && pytest -v"
