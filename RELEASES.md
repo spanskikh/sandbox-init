@@ -4,6 +4,18 @@ Official release roadmap and business-value traceability matrix across the local
 
 ---
 
+## Release `v0.6.0` (In Progress — Planned Scope)
+- **Business Goal:** Prepare and promote all four neuro-symbolic cluster repositories (`sandbox-init`, `abstract-ops`, `interview-ops`, `hostel-ops`) to public portfolio status on GitHub with zero secret/PII leakage, verified `CycloneDX` SBOM generation, up-to-date showcase metrics, and green GitHub Actions CI pipelines.
+- **Refinement Record:** [`docs/releases/v0.6.0-refine.md`](docs/releases/v0.6.0-refine.md)
+
+| CR # & Short Name | Repository | Short Task Description | Contribution to Release Business Goal | Architecture Learning Value | Formal Invariant / DoD |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **CR-014: Pre-Public Secret, PII & Hygiene Audit Gate** | All 4 repositories | Automated repository hygiene and secret/PII scanner (`tests/test_release_hygiene.py`) + staged CI / `publish_to_github.sh` verification. | Eliminates risk of leaking PII, real credentials, or local host paths when flipping repositories to public. | Automated release-readiness gating, secret/PII hygiene checks, and supply-chain hardening. | `tests/test_release_hygiene.py` green across all tracked files; `docs/ci/ci.yml` validated. |
+| **CR-015: Public Portfolio Landing & Metrics Synchronization** | All 4 repositories | Update `README.md` and `docs/ARCHITECTURE.md` with verified `v0.5.0` metrics, diagrams, and quickstart commands. | Ensures reviewers immediately see empirical QA proofs (`Recall@3`, `MRR`, `0` false `SAT`, MCP `stdio`) on every landing page. | Aligns Level-1 (`README.md`) and Level-2 (`docs/ARCHITECTURE.md`) technical documentation with telemetry. | `test_docs_quality.py` (offline + live `Ollama` rubric `>= 4/5`) green across all 4 repositories. |
+| **CR-016: Public GitHub Promotion & CycloneDX SBOM CI Activation** | All 4 repositories | Promote `docs/ci/ci.yml -> .github/workflows/ci.yml` via `scripts/publish_to_github.sh`, switch to `public`, and verify green CI + SBOM artifact. | Completes public release delivery with live CI verification and `CycloneDX` SBOM transparency. | Operationalizes private-to-public promotion workflows and automated `CycloneDX` SBOM generation. | All 4 repos `public` on GitHub; GitHub Actions green with `cyclonedx-sbom` artifact uploaded. |
+
+---
+
 ## Release `v0.5.0` (Released — 2026-11-22)
 - **Business Goal:** Prove end-to-end protocol reliability, retrieval precision, and adversarial resilience of the neuro-symbolic agentic cluster under automated, reproducible QA harnesses—demonstrating production-grade AI Quality Assurance readiness without cloud dependencies.
 - **Refinement Record:** [`docs/releases/v0.5.0-refine.md`](docs/releases/v0.5.0-refine.md)
