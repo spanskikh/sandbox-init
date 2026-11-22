@@ -2,6 +2,21 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.5.0] - 2026-11-22 — CR-010, CR-011 & CR-013: FastMCP `stdio` Contract Harness, RAG DuckDB Telemetry & `DEVPROCESS.md`
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated unverified JSON-RPC `stdio` tool boundary drift, cross-session process/schema guesswork (`CAPA-002`), and missing cross-repo IR benchmark telemetry storage in `DuckDB`.
+- **Traceability:** Branches `feat/cr-010-mcp-stdio-contracts` (`6166600`), `feat/cr-011-rag-benchmark-telemetry` (`f1716c7`), and `CR-013` (`DEVPROCESS.md` + `CAPA-002`) merged via `--no-ff`; releases `v0.5.0`.
+
+### Added
+- `tests/test_mcp_contracts.py`: Real `mcp.client.stdio` JSON-RPC discovery (`list_tools()`), input JSON schema verification, `SAT`/`UNSAT` Z3 verdicts, and Pydantic `ValidationError` rejection across all 4 exposed `FastMCP` tools (`check_cluster_allocation`, `check_cluster_plan`, `synthesize_valid_allocation`, `record_node_memory_telemetry`).
+- `src/sandbox_init/contracts.py` & `src/sandbox_init/store.py`: Added `RagBenchmarkTelemetry` Pydantic v2 contract and `rag_benchmarks` append-only telemetry table (`record_rag_benchmark`, `count_rag_benchmarks`) in `AuditStore` (`DuckDB`).
+- `DEVPROCESS.md` & `docs/DEFECTS_AND_CAPA.md` (`CAPA-002`): Codified normative Scrum release gates, zero-orphan CR traceability, English-only Git policy, and `.venv/bin/` + `./scripts/run_logged.sh` standards.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr011_ruff` (`logs/20261122-154815_cr011_ruff.log`): `All checks passed!`
+- `./scripts/run_logged.sh cr011_mypy` (`logs/20261122-154815_cr011_mypy.log`): `Success: no issues found in 15 source files`
+- `./scripts/run_logged.sh cr011_pytest` (`logs/20261122-154816_cr011_pytest.log`): `22 passed, 3 deselected`
+
 ## [0.4.0] - 2026-11-22 — CR-009: Dev-Process Auditability, Execution Logging & Release Retrospectives
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated loss of iterative engineering history, unlogged local execution runs, and missing post-release retrospectives across `sandbox-init` by introducing deterministic `.stdout`/`.stderr`/`.log` capture, versioned `docs/dev-log/` artifacts, and mandatory release retrospectives enforced by automated mutation tests.
