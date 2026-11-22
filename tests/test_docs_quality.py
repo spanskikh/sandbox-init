@@ -75,7 +75,7 @@ LINK_RE = re.compile(r"\[[^\]]+\]\(([^)#\s]+)(?:#[^)]*)?\)")
 
 def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocAuditReport:
     violations: list[DocViolation] = []
-    required_files = ["README.md", "CHANGELOG.md", "docs/ARCHITECTURE.md"]
+    required_files = ["README.md", "CHANGELOG.md", "RELEASES.md", "docs/ARCHITECTURE.md"]
     if require_capa_registry:
         required_files.append("docs/DEFECTS_AND_CAPA.md")
 
@@ -241,6 +241,20 @@ def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocA
                     )
                 )
 
+
+    if "RELEASES.md" in loaded:
+        rel_doc = loaded["RELEASES.md"]
+        has_goal = "Business Goal:" in rel_doc
+        has_contrib = "Contribution to Release Business Goal" in rel_doc
+        if not has_goal or not has_contrib:
+            violations.append(
+                DocViolation(
+                    code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
+                    file="RELEASES.md",
+                    detail="RELEASES.md must define Business Goal and CR contribution tables.",
+                )
+            )
+
     return DocAuditReport(passed=len(violations) == 0, violations=violations)
 
 
@@ -263,6 +277,11 @@ def _seed_clean_repo(base: Path) -> None:
         "# Architecture\n\n## 1. Topology\n```mermaid\nflowchart TD\n    A --> B\n```\n\n"
         "## 2. ADR-001\nUses Z3 SMT, Pydantic v2, and DuckDB for SAT/UNSAT proofs.\n\n"
         "## 3. Risk & Control Matrix\nMitigates drift via PyTest and Hypothesis.\n",
+        encoding="utf-8",
+    )
+    (base / "RELEASES.md").write_text(
+        "# Releases\n## Release v0.1.0\n- **Business Goal:** Baseline.\n"
+        "| CR # | Contribution to Release Business Goal |\n| --- | --- |\n",
         encoding="utf-8",
     )
     (base / "CHANGELOG.md").write_text(
@@ -290,6 +309,7 @@ def test_repository_documentation_passes_quality_gate() -> None:
         ("broken_link", ViolationCode.BROKEN_RELATIVE_LINK),
         ("hype_without_proofs", ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE),
         ("missing_retrospective_section", ViolationCode.MISSING_REQUIRED_SECTION),
+        ("missing_releases_doc", ViolationCode.MISSING_REQUIRED_FILE),
     ],
 )
 def test_doc_auditor_catches_seeded_counterexamples(
@@ -303,6 +323,7 @@ def test_doc_auditor_catches_seeded_counterexamples(
         "broken_link",
         "hype_without_proofs",
         "missing_retrospective_section",
+        "missing_releases_doc",
     ],
     expected_code: ViolationCode,
 ) -> None:
@@ -353,6 +374,9 @@ def test_doc_auditor_catches_seeded_counterexamples(
             retro.read_text(encoding="utf-8").replace("## Rejected Ideas", "## Other"),
             encoding="utf-8",
         )
+
+    elif defect_name == "missing_releases_doc":
+        (tmp_path / "RELEASES.md").unlink()
 
     mutated = audit_documentation(tmp_path)
     assert not mutated.passed, f"Oracle failed to catch seeded counterexample: {defect_name}"
