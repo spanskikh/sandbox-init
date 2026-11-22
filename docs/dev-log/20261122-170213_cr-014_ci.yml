@@ -1,0 +1,48 @@
+# Target: docs/ci/ci.yml
+name: Deterministic Verification & CycloneDX SBOM
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-and-sbom:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install package, dev tools, and CycloneDX
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]" cyclonedx-bom
+
+      - name: Ruff lint
+        run: ruff check src tests
+
+      - name: Mypy strict typecheck
+        run: mypy src tests --strict
+
+      - name: Pytest unit, property, MCP contract, and hygiene suites
+        run: pytest -v -m "not integration"
+
+      - name: Generate CycloneDX SBOM
+        run: cyclonedx-py environment -o sbom.cdx.json
+
+      - name: Upload CycloneDX SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cyclonedx-sbom
+          path: sbom.cdx.json
+          retention-days: 30
