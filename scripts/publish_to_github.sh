@@ -9,7 +9,11 @@ if [[ ! -f docs/ci/ci.yml ]]; then
   exit 1
 fi
 
-uv sync --extra dev
+if [[ -n "$(git status --porcelain)" ]]; then
+  echo "ERROR: Working tree is dirty. Commit or stash changes before publishing." >&2
+  exit 1
+fi
+
 .venv/bin/ruff check src tests
 .venv/bin/mypy src tests --strict
 .venv/bin/pytest -v -m "not integration"
@@ -22,4 +26,4 @@ git add .github/workflows/ci.yml
 git commit -m "ci: activate GitHub Actions verification and CycloneDX SBOM pipeline"
 
 echo "Ready to publish. Run:"
-echo "  gh repo edit --visibility public --accept-visibility-change-consequences && git push origin main"
+echo "  gh repo edit --visibility public --accept-visibility-change-consequences && git push origin main --tags"
