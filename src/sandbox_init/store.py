@@ -4,11 +4,15 @@ from pathlib import Path
 
 import duckdb
 
-from sandbox_init.contracts import NodeMemorySnapshot, VerificationVerdict
+from sandbox_init.contracts import (
+    NodeMemorySnapshot,
+    RagBenchmarkTelemetry,
+    VerificationVerdict,
+)
 
 
 class AuditStore:
-    """Локальный append-only журнал верификаций в DuckDB."""
+    """Local append-only verification and telemetry log in DuckDB."""
 
     def __init__(self, db_path: str | Path = ":memory:") -> None:
         self._conn = duckdb.connect(str(db_path))
@@ -42,6 +46,21 @@ class AuditStore:
             """
         )
 
+        self._conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS rag_benchmarks (
+                ts TIMESTAMP DEFAULT current_timestamp,
+                suite_name VARCHAR NOT NULL,
+                mode VARCHAR NOT NULL,
+                query_count INTEGER NOT NULL,
+                recall_at_k DOUBLE NOT NULL,
+                mrr DOUBLE NOT NULL,
+                p95_latency_ms DOUBLE NOT NULL,
+                passed_gate BOOLEAN NOT NULL
+            )
+            """
+        )
+
     def record_snapshot(self, snap: NodeMemorySnapshot) -> None:
         self._conn.execute(
             """
@@ -62,6 +81,29 @@ class AuditStore:
 
     def count_snapshots(self) -> int:
         row = self._conn.execute("SELECT COUNT(*) FROM node_memory_snapshots").fetchone()
+        return int(row[0]) if row else 0
+
+    def record_rag_benchmark(self, bench: RagBenchmarkTelemetry) -> None:
+        self._conn.execute(
+            """
+            INSERT INTO rag_benchmarks (
+                suite_name, mode, query_count, recall_at_k, mrr, p95_latency_ms, passed_gate
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            [
+                bench.suite_name,
+                bench.mode,
+                bench.query_count,
+                bench.recall_at_k,
+                bench.mrr,
+                bench.p95_latency_ms,
+                bench.passed_gate,
+            ],
+        )
+
+    def count_rag_benchmarks(self) -> int:
+        row = self._conn.execute("SELECT COUNT(*) FROM rag_benchmarks").fetchone()
         return int(row[0]) if row else 0
 
     def record(self, verdict: VerificationVerdict) -> None:
