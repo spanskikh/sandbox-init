@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 
 class AllocationProposal(BaseModel):
-    """Структурированное предложение от LLM по распределению памяти одного узла."""
+    """Structured LLM proposal for single-node RAM allocation."""
 
     node: Literal["hippo", "rhino"]
     llm_ram_gb: int = Field(ge=0, le=64)
@@ -16,7 +16,7 @@ class AllocationProposal(BaseModel):
 
 
 class VerificationVerdict(BaseModel):
-    """Детерминированный вердикт Z3 + диагностика для CEGIS-цикла."""
+    """Deterministic Z3 verdict and diagnostics for the CEGIS loop."""
 
     status: Literal["SAT", "UNSAT"]
     proposal: AllocationProposal
@@ -25,7 +25,7 @@ class VerificationVerdict(BaseModel):
 
 
 class NodeAllocation(BaseModel):
-    """Профиль распределения ресурсов на конкретном узле кластера."""
+    """Resource allocation profile for a specific cluster node."""
 
     llm_ram_gb: int = Field(ge=0, le=24)
     db_ram_gb: int = Field(ge=0, le=24)
@@ -33,14 +33,14 @@ class NodeAllocation(BaseModel):
 
 
 class ClusterPlanProposal(BaseModel):
-    """Кросс-узловой план размещения сервисов на hippo (24 GiB) и rhino (16 GiB)."""
+    """Cross-node service placement plan across hippo (24 GiB) and rhino (16 GiB)."""
 
     hippo: NodeAllocation
     rhino: NodeAllocation
 
 
 class ClusterVerdict(BaseModel):
-    """Вердикт Z3 для двух-узлового кластера с диагностикой нарушенных инвариантов."""
+    """Z3 verdict for the two-node cluster with violated invariant diagnostics."""
 
     status: Literal["SAT", "UNSAT"]
     plan: ClusterPlanProposal
@@ -58,3 +58,15 @@ class NodeMemorySnapshot(BaseModel):
     used_gb: float = Field(ge=0)
     min_headroom_gb: float = Field(ge=0, default=4.0)
     within_budget: bool
+
+
+class RagBenchmarkTelemetry(BaseModel):
+    """IR benchmark telemetry record persisted from interview-ops RRF evaluations."""
+
+    suite_name: str = Field(min_length=1, max_length=64)
+    mode: Literal["dense", "lexical", "hybrid_rrf"]
+    query_count: int = Field(gt=0)
+    recall_at_k: float = Field(ge=0.0, le=1.0)
+    mrr: float = Field(ge=0.0, le=1.0)
+    p95_latency_ms: float = Field(ge=0.0)
+    passed_gate: bool
