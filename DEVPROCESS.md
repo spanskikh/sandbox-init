@@ -40,3 +40,10 @@ Normative standard governing release lifecycle, traceability, document roles, qu
 
 ## Non-Interactive CLI Execution (No Pagers in Automation)
 - All automated shell loops, verification scripts, and `run_logged.sh` invocations **must** disable interactive terminal pagers (`less`/`more`) by setting `PAGER=cat`, `GIT_PAGER=cat`, and `GH_PAGER=""` (or passing explicit `--no-pager` / `--json ... --jq ...` flags) so non-TTY and scripted runs never block or truncate stdout.
+
+## Release Session Isolation & Bootstrap Handoff
+
+- **One Release = One Dedicated Chat Session:** Every major/minor release cycle (`vX.Y.0`) MUST be executed in a fresh, dedicated assistant session to prevent context window drift and stale state leakage across releases.
+- **Release Closure Prerequisite:** Before starting a new release session, the previous release MUST be closed with `docs/releases/vX.Y.Z-retrospective.md` and `docs/releases/vX.(Y+1).0-refine.md` committed and verified against offline documentation and release-hygiene gates (`pytest -m "not integration"`).
+- **Mandatory Bootstrap Prompt in `vX.Y.Z-refine.md`:** Every `docs/releases/vX.Y.Z-refine.md` file MUST include a self-contained `## Next-Session Bootstrap Prompt` section containing exact repository state, verified baselines, architectural constraints, and first-step execution instructions so a fresh session can resume without guesswork.
+
