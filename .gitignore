@@ -12,3 +12,4 @@ mcp_config.json
 .#*
 #*#
 uv.lock
+logs/

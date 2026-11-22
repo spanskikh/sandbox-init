@@ -211,11 +211,39 @@ def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocA
                 )
             )
 
+
+    retro_files = sorted((root / "docs/releases").glob("v*-retrospective.md")) if (root / "docs/releases").is_dir() else []
+    if not retro_files:
+        violations.append(
+            DocViolation(
+                code=ViolationCode.MISSING_REQUIRED_FILE,
+                file="docs/releases/",
+                detail="At least one release retrospective (vX.Y.Z-retrospective.md) is required.",
+            )
+        )
+    else:
+        latest_retro = retro_files[-1]
+        retro_txt = latest_retro.read_text(encoding="utf-8")
+        for sec in ("Lessons Learned", "Rejected Ideas", "Unlucky Probe-Runs", "Release Chat Digest"):
+            if sec not in retro_txt:
+                violations.append(
+                    DocViolation(
+                        code=ViolationCode.MISSING_REQUIRED_SECTION,
+                        file=f"docs/releases/{latest_retro.name}",
+                        detail=f"Release retrospective missing required section: {sec}",
+                    )
+                )
+
     return DocAuditReport(passed=len(violations) == 0, violations=violations)
 
 
 def _seed_clean_repo(base: Path) -> None:
-    (base / "docs").mkdir(parents=True, exist_ok=True)
+    (base / "docs/releases").mkdir(parents=True, exist_ok=True)
+    (base / "docs/releases/v0.1.0-retrospective.md").write_text(
+        "# Retro\n## Lessons Learned\n- Ok\n## Rejected Ideas\n- None\n"
+        "## Unlucky Probe-Runs\n- None\n## Release Chat Digest\n- Done\n",
+        encoding="utf-8",
+    )
     (base / "README.md").write_text(
         "# demo-ops — Formal Neuro-Symbolic Verifier\n\n"
         "Deterministic Z3 SMT and Pydantic v2 verification harness with PyTest and Hypothesis.\n\n"
@@ -254,6 +282,7 @@ def test_repository_documentation_passes_quality_gate() -> None:
         ("unclosed_mermaid", ViolationCode.BROKEN_MERMAID_BLOCK),
         ("broken_link", ViolationCode.BROKEN_RELATIVE_LINK),
         ("hype_without_proofs", ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE),
+        ("missing_retrospective_section", ViolationCode.MISSING_REQUIRED_SECTION),
     ],
 )
 def test_doc_auditor_catches_seeded_counterexamples(
@@ -266,6 +295,7 @@ def test_doc_auditor_catches_seeded_counterexamples(
         "unclosed_mermaid",
         "broken_link",
         "hype_without_proofs",
+        "missing_retrospective_section",
     ],
     expected_code: ViolationCode,
 ) -> None:
@@ -307,6 +337,13 @@ def test_doc_auditor_catches_seeded_counterexamples(
             "# app\n## One\n## Two\n## Three\n"
             "```mermaid\nflowchart LR\n    A --> B\n```\n"
             "This is a game-changing seamless AI magic platform.\n",
+            encoding="utf-8",
+        )
+
+    elif defect_name == "missing_retrospective_section":
+        retro = tmp_path / "docs/releases/v0.1.0-retrospective.md"
+        retro.write_text(
+            retro.read_text(encoding="utf-8").replace("## Rejected Ideas", "## Other"),
             encoding="utf-8",
         )
 
