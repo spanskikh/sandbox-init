@@ -2,6 +2,24 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.3.0] - 2026-11-22 — CR-008: Documentation Quality Gates, Mutation Counterexamples & Live Rubric Evaluation
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated documentation drift, broken relative links, unclosed Mermaid diagrams, unresolved placeholders, and hollow marketing claims across `sandbox-init` through deterministic structural/style/market-value checks, 7 seeded negative mutation counterexamples, and live `Ollama` rubric grading.
+- **Traceability:** Branch `feat/cr-008-docs-quality-tests` merged via `--no-ff`; releases `v0.3.0`.
+
+### Added
+- `tests/test_docs_quality.py`: `DocQualityAuditor` (`Pydantic v2`), 7 parametrized negative mutation counterexamples (`MISSING_REQUIRED_FILE`, `LANGUAGE_DRIFT_CYRILLIC`, `MISSING_REQUIRED_SECTION`, `PLACEHOLDER_LEAK`, `BROKEN_MERMAID_BLOCK`, `BROKEN_RELATIVE_LINK`, `LOW_MARKET_SIGNAL_OR_HYPE`), and `@pytest.mark.integration` live `Ollama` rubric test (`num_ctx=2048`, `num_predict=160`, `timeout=180.0` tuned for CPU inference on `hippo`).
+- `pyproject.toml`: Standardized version `0.3.0`, `[project.optional-dependencies] dev`, `pythonpath = ["src"]`, and `@pytest.mark.integration` marker.
+
+### Verification Evidence
+- `ruff check src tests`: `All checks passed!`
+- `mypy src tests --strict`: `Success: no issues found`
+- `pytest -v -m "not integration"`: `16 passed, 3 deselected` (including all 7 seeded mutation counterexamples)
+- `pytest -v -m "integration"`: `3 passed, 16 deselected` (live `Ollama` rubric >= 4/5 on real docs and <= 2/5 on weak counterexample)
+
+### Planned Next (`v0.4.0` Backlog)
+- **CR-009 (Dev-Process Auditability & Execution Logging):** Timestamped downloadable patch/script artifacts for raw engineering history alongside `scripts/run_logged.sh` capturing `.stdout`, `.stderr`, and combined `.log` with start/end ISO-8601 timestamps.
+
 ## [0.3.0-cr006] - 2026-11-22 — CR-006: Offline GitHub Actions CI & CycloneDX SBOM Blueprints
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Standardized pre-release verification (`ruff`, `mypy --strict`, `pytest -m "not integration"`) and supply-chain `CycloneDX` SBOM generation across `sandbox-init` without triggering premature CI runs while the repository remains private.
