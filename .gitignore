@@ -8,3 +8,7 @@ __pycache__/
 .env
 data/
 mcp_config.json
+*~
+.#*
+#*#
+uv.lock
