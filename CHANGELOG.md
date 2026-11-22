@@ -2,6 +2,21 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.3.0] - 2026-11-22 — CR-005: OpenRC Persistent PG Tunnel & Live Cluster Smoke Suite
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated manual SSH port-forwarding fragility between `hippo` (`127.0.0.1:15432`) and `rhino` (`127.0.0.1:5432`) and established deterministic live E2E verification across PostgreSQL wire reachability, `Ollama` API, `/proc/meminfo` headroom, and `DuckDB` persistence.
+- **Traceability:** OpenRC `supervise-daemon` unit `pg-tunnel-rhino` + branch `feat/cr-005-cluster-smoke-and-tunnel` merged via `--no-ff`.
+
+### Added
+- `pyproject.toml`: Bumped package version to `0.3.0`, added `pythonpath = ["src"]`, and registered `@pytest.mark.integration` marker.
+- `tests/test_cluster_live_smoke.py`: Live cluster smoke checks (`test_rhino_pg_tunnel_reachable`, `test_hippo_ollama_headroom_and_duckdb_audit`).
+
+### Verification Evidence
+- `ruff check src tests`: `All checks passed!`
+- `mypy src tests --strict`: `Success: no issues found in 12 source files`
+- `pytest -v -m "not integration"`: `8 passed, 2 deselected`
+- `pytest -v -m "integration"`: `2 passed, 8 deselected` (against live `pg-tunnel-rhino` + `Ollama`)
+
 ## [0.2.0] - 2026-11-21 — CR-001: Live Host Memory Telemetry & Headroom Guard
 ### Objective & Risk Mitigated
 * **Closed Residual Risk:** Eliminated blind spots between static Z3 RAM budget proofs and empirical host memory pressure (`OOM` risk on 24 GiB / 16 GiB CPU nodes).
