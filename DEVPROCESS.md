@@ -37,3 +37,6 @@ Normative standard governing release lifecycle, traceability, document roles, qu
 - **Interactive Shell Hygiene:** Never paste `set -e` into multi-line interactive `bash` commands (use `|| break` in loops). Keep `core.pager = "less -FRX"` and `GIT_PAGER=cat`.
 - **Zero-Guesswork Contract Rule:** Never guess Pydantic field names or `@mcp.tool()` signatures; inspect `models.py` and `server.py` first before writing tests.
 - **Compact Exchange Protocol:** Deliver new modules/tests as clean code blocks with `Target: <relative_path>` headers rather than giant shell heredocs, and paste only compact 5–10 line summaries from `logs/*.log` into chat.
+
+## Non-Interactive CLI Execution (No Pagers in Automation)
+- All automated shell loops, verification scripts, and `run_logged.sh` invocations **must** disable interactive terminal pagers (`less`/`more`) by setting `PAGER=cat`, `GIT_PAGER=cat`, and `GH_PAGER=""` (or passing explicit `--no-pager` / `--json ... --jq ...` flags) so non-TTY and scripted runs never block or truncate stdout.
