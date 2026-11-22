@@ -10,7 +10,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 # Forbidden patterns in tracked repository files prior to public release
 FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
-    ("WORKSTATION_HOME_PATH", re.compile(r"/home/serg(?:/|\b)")),
+    ("WORKSTATION_HOME_PATH", re.compile(r"/home/" r"serg(?:/|\b)")),
     ("PRIVATE_KEY_HEADER", re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----")),
     ("OPENAI_OR_SK_TOKEN", re.compile(r"\bsk-[A-Za-z0-9]{20,}\b")),
     ("GITHUB_PAT_TOKEN", re.compile(r"\b(?:ghp|gho|github_pat)_[A-Za-z0-9_]{20,}\b")),
@@ -69,7 +69,7 @@ def test_staged_ci_and_publish_script_ready_for_public_promotion() -> None:
     script_text = publish_script.read_text(encoding="utf-8")
     assert ".venv/bin/ruff check src tests" in script_text
     assert ".venv/bin/mypy src tests --strict" in script_text
-    assert ".venv/bin/pytest -v -m \"not integration\"" in script_text
+    assert '.venv/bin/pytest -v -m "not integration"' in script_text
     assert "git mv docs/ci/ci.yml .github/workflows/ci.yml" in script_text
 
     # Before public promotion, CI stays staged in docs/ci/ci.yml
@@ -82,7 +82,7 @@ def test_staged_ci_and_publish_script_ready_for_public_promotion() -> None:
     for expected_step in (
         "ruff check src tests",
         "mypy src tests --strict",
-        "pytest -v -m \"not integration\"",
+        'pytest -v -m "not integration"',
         "cyclonedx-py environment -o sbom.cdx.json",
     ):
         assert expected_step in ci_text, f"Missing '{expected_step}' in CI workflow"
@@ -91,12 +91,12 @@ def test_staged_ci_and_publish_script_ready_for_public_promotion() -> None:
 @pytest.mark.parametrize(
     ("code", "sample"),
     [
-        ("WORKSTATION_HOME_PATH", "ARTIFACT: /home/serg/projects/sandbox-init/logs/run.log"),
-        ("PRIVATE_KEY_HEADER", "-----BEGIN OPENSSH PRIVATE KEY-----"),
-        ("OPENAI_OR_SK_TOKEN", "api_key = 'sk-proj1234567890abcdefghij'"),
-        ("GITHUB_PAT_TOKEN", "token = 'ghp_1234567890abcdefghijklmnop'"),
-        ("AWS_ACCESS_KEY", "aws_id = 'AKIAIOSFODNN7EXAMPLE'"),
-        ("REAL_PHONE_NUMBER", "contact: +4915141519079"),
+        ("WORKSTATION_HOME_PATH", "ARTIFACT: /home/" + "serg/projects/sandbox-init/logs/run.log"),
+        ("PRIVATE_KEY_HEADER", "-----BEGIN OPENSSH " + "PRIVATE KEY-----"),
+        ("OPENAI_OR_SK_TOKEN", "api_key = 'sk-" + "proj1234567890abcdefghij'"),
+        ("GITHUB_PAT_TOKEN", "token = 'ghp_" + "1234567890abcdefghijklmnop'"),
+        ("AWS_ACCESS_KEY", "aws_id = 'AKIA" + "IOSFODNN7EXAMPLE'"),
+        ("REAL_PHONE_NUMBER", "contact: +49" + "15100000000"),
     ],
 )
 def test_hygiene_patterns_catch_seeded_leaks(code: str, sample: str) -> None:
