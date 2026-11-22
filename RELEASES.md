@@ -14,6 +14,8 @@ Official release roadmap and business-value traceability matrix across the local
 | **CR-011: Hybrid RRF Benchmark & Recall@K / MRR Gate** | `interview-ops` (+ `sandbox-init` DuckDB telemetry) | Golden Dataset (15+ queries against SSOT) measuring `Recall@3`, `MRR`, and p95 latency across `pgvector`, `tsvector`, and `RRF (k=60)`, logged to `DuckDB`. | Quantifies anti-hallucination retrieval quality with objective IR metrics before LLM synthesis. | Information Retrieval evaluation (`Recall@K`, `MRR`) and hybrid search trade-offs over SSH-tunneled `PostgreSQL + pgvector`. | `Recall@3 >= 0.90`, `MRR >= 0.85`, p95 `< 150 ms`; metrics persisted to `DuckDB`. |
 | **CR-012: Adversarial Policy Fuzzing & CEGIS Convergence Gate** | `abstract-ops` | Property-based and adversarial spec generator (`Hypothesis` + synthetic edge cases) benchmarking CEGIS repair convergence. | Proves the formal policy auditor catches 100% of subtle security/logic flaws within bounded CPU budgets. | Neuro-symbolic CEGIS convergence guarantees and adversarial robustness testing (`ISO/IEC 24029`). | 0 false `SAT` verdicts across `>= 50` adversarial specs; convergence in `<= 3` iterations. |
 
+| **CR-013: Normative Dev Process & CAPA-002 Standard** | All 4 repositories | Codify `DEVPROCESS.md` (zero-orphan CR traceability, Scrum gates, English-only Git policy, `.venv/bin/` & shell rules) linked to `CAPA-002`. | Prevents cross-session context drift and unverified schema guesswork across multi-repo AI development. | Establishes repeatable SDLC governance and human-AI collaboration protocols for senior QA/Architect review. | `DEVPROCESS.md` + `CAPA-002` published; `test_docs_quality.py` (`LANGUAGE_DRIFT_CYRILLIC`) green. |
+
 ---
 
 ## Release `v0.4.0` (Released — 2026-11-22)
