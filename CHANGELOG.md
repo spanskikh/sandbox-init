@@ -2,6 +2,66 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.6.0] - 2026-11-22 — CR-014, CR-015 & CR-016: Pre-Public Hygiene Gate, Portfolio Sync & Public CI / CycloneDX Activation
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated secret, PII, workstation path, and runtime artifact leakage risks prior to making repositories public, synchronized showcase documentation with verified `v0.5.0` metrics, and activated GitHub Actions CI + `CycloneDX` SBOM generation.
+- **Traceability:** Branches `feat/cr-014-release-hygiene-gate` (`bcb0c80`), `feat/cr-015-portfolio-landing-sync` (`fd3c506`), and `CR-016` CI promotion merged via `--no-ff`; releases `v0.6.0`.
+
+### Added
+- `tests/test_release_hygiene.py`: Tracked-file scanner blocking secrets, tokens, private keys, real phone numbers, `/home/<user>/` paths, and `.duckdb`/`.log`/`.env` files, plus staged CI and `publish_to_github.sh` verification.
+- `docs/ci/ci.yml` -> `.github/workflows/ci.yml` & `scripts/publish_to_github.sh`: Deterministic GitHub Actions pipeline (`ruff`, `mypy --strict`, `pytest -m "not integration"`, `cyclonedx-py` SBOM artifact upload).
+- `README.md` & `docs/ARCHITECTURE.md`: Synchronized cluster-wide QA benchmarks and risk controls for public release.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr015_ruff`: `All checks passed!`
+- `./scripts/run_logged.sh cr015_mypy`: `Success: no issues found in 16 source files`
+- `./scripts/run_logged.sh cr015_pytest`: `30 passed, 3 deselected`
+
+## [0.6.0] - 2026-11-22 — CR-014, CR-015 & CR-016: Pre-Public Hygiene Gate, Portfolio Sync & Public CI / CycloneDX Activation
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated secret, PII, workstation path, and runtime artifact leakage risks prior to making repositories public, synchronized showcase documentation with verified `v0.5.0` metrics, and activated GitHub Actions CI + `CycloneDX` SBOM generation.
+- **Traceability:** Branches `feat/cr-014-release-hygiene-gate` (`bcb0c80`), `feat/cr-015-portfolio-landing-sync` (`fd3c506`), and `CR-016` CI promotion merged via `--no-ff`; releases `v0.6.0`.
+
+### Added
+- `tests/test_release_hygiene.py`: Tracked-file scanner blocking secrets, tokens, private keys, real phone numbers, `/home/<user>/` paths, and `.duckdb`/`.log`/`.env` files, plus staged CI and `publish_to_github.sh` verification.
+- `docs/ci/ci.yml` -> `.github/workflows/ci.yml` & `scripts/publish_to_github.sh`: Deterministic GitHub Actions pipeline (`ruff`, `mypy --strict`, `pytest -m "not integration"`, `cyclonedx-py` SBOM artifact upload).
+- `README.md` & `docs/ARCHITECTURE.md`: Synchronized cluster-wide QA benchmarks and risk controls for public release.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr015_ruff`: `All checks passed!`
+- `./scripts/run_logged.sh cr015_mypy`: `Success: no issues found in 16 source files`
+- `./scripts/run_logged.sh cr015_pytest`: `30 passed, 3 deselected`
+
+## [0.6.0] - 2026-11-22 — CR-014, CR-015 & CR-016: Pre-Public Hygiene Gate, Portfolio Sync & Public CI / CycloneDX Activation
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated secret, PII, workstation path, and runtime artifact leakage risks prior to making repositories public, synchronized showcase documentation with verified `v0.5.0` metrics, and activated GitHub Actions CI + `CycloneDX` SBOM generation.
+- **Traceability:** Branches `feat/cr-014-release-hygiene-gate` (`bcb0c80`), `feat/cr-015-portfolio-landing-sync` (`fd3c506`), and `CR-016` CI promotion merged via `--no-ff`; releases `v0.6.0`.
+
+### Added
+- `tests/test_release_hygiene.py`: Tracked-file scanner blocking secrets, tokens, private keys, real phone numbers, `/home/<user>/` paths, and `.duckdb`/`.log`/`.env` files, plus staged CI and `publish_to_github.sh` verification.
+- `docs/ci/ci.yml` -> `.github/workflows/ci.yml` & `scripts/publish_to_github.sh`: Deterministic GitHub Actions pipeline (`ruff`, `mypy --strict`, `pytest -m "not integration"`, `cyclonedx-py` SBOM artifact upload).
+- `README.md` & `docs/ARCHITECTURE.md`: Synchronized cluster-wide QA benchmarks and risk controls for public release.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr015_ruff`: `All checks passed!`
+- `./scripts/run_logged.sh cr015_mypy`: `Success: no issues found in 16 source files`
+- `./scripts/run_logged.sh cr015_pytest`: `30 passed, 3 deselected`
+
+## [0.6.0] - 2026-11-22 — CR-014, CR-015 & CR-016: Pre-Public Hygiene Gate, Portfolio Sync & Public CI / CycloneDX Activation
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated secret, PII, workstation path, and runtime artifact leakage risks prior to making repositories public, synchronized showcase documentation with verified `v0.5.0` metrics, and activated GitHub Actions CI + `CycloneDX` SBOM generation.
+- **Traceability:** Branches `feat/cr-014-release-hygiene-gate` (`bcb0c80`), `feat/cr-015-portfolio-landing-sync` (`fd3c506`), and `CR-016` CI promotion merged via `--no-ff`; releases `v0.6.0`.
+
+### Added
+- `tests/test_release_hygiene.py`: Tracked-file scanner blocking secrets, tokens, private keys, real phone numbers, `/home/<user>/` paths, and `.duckdb`/`.log`/`.env` files, plus staged CI and `publish_to_github.sh` verification.
+- `docs/ci/ci.yml` -> `.github/workflows/ci.yml` & `scripts/publish_to_github.sh`: Deterministic GitHub Actions pipeline (`ruff`, `mypy --strict`, `pytest -m "not integration"`, `cyclonedx-py` SBOM artifact upload).
+- `README.md` & `docs/ARCHITECTURE.md`: Synchronized cluster-wide QA benchmarks and risk controls for public release.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr015_ruff`: `All checks passed!`
+- `./scripts/run_logged.sh cr015_mypy`: `Success: no issues found in 16 source files`
+- `./scripts/run_logged.sh cr015_pytest`: `30 passed, 3 deselected`
+
 ## [0.5.0] - 2026-11-22 — CR-010, CR-011 & CR-013: FastMCP `stdio` Contract Harness, RAG DuckDB Telemetry & `DEVPROCESS.md`
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated unverified JSON-RPC `stdio` tool boundary drift, cross-session process/schema guesswork (`CAPA-002`), and missing cross-repo IR benchmark telemetry storage in `DuckDB`.

@@ -4,7 +4,7 @@ Official release roadmap and business-value traceability matrix across the local
 
 ---
 
-## Release `v0.6.0` (In Progress — Planned Scope)
+## Release `v0.6.0` (Released — 2026-11-22)
 - **Business Goal:** Prepare and promote all four neuro-symbolic cluster repositories (`sandbox-init`, `abstract-ops`, `interview-ops`, `hostel-ops`) to public portfolio status on GitHub with zero secret/PII leakage, verified `CycloneDX` SBOM generation, up-to-date showcase metrics, and green GitHub Actions CI pipelines.
 - **Refinement Record:** [`docs/releases/v0.6.0-refine.md`](docs/releases/v0.6.0-refine.md)
 
