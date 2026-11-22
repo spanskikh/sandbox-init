@@ -212,7 +212,8 @@ def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocA
             )
 
 
-    retro_files = sorted((root / "docs/releases").glob("v*-retrospective.md")) if (root / "docs/releases").is_dir() else []
+    rel_dir = root / "docs/releases"
+    retro_files = sorted(rel_dir.glob("v*-retrospective.md")) if rel_dir.is_dir() else []
     if not retro_files:
         violations.append(
             DocViolation(
@@ -224,7 +225,13 @@ def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocA
     else:
         latest_retro = retro_files[-1]
         retro_txt = latest_retro.read_text(encoding="utf-8")
-        for sec in ("Lessons Learned", "Rejected Ideas", "Unlucky Probe-Runs", "Release Chat Digest"):
+        required_secs = (
+            "Lessons Learned",
+            "Rejected Ideas",
+            "Unlucky Probe-Runs",
+            "Release Chat Digest",
+        )
+        for sec in required_secs:
             if sec not in retro_txt:
                 violations.append(
                     DocViolation(
