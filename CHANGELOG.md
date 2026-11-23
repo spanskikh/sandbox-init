@@ -2,6 +2,21 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.8.0] - 2026-11-23 — CR-022 & CR-023: Cross-Cluster Z3 Contract, SBOM Gate & Rubric Sign-Off
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Enforced cross-cluster Z3 RAM budget invariants (`hippo` 24 GiB / `rhino` 16 GiB), 12-tool FastMCP namespace disjointness, deterministic `CycloneDX` SBOM reproducibility, and grammar-constrained live Ollama documentation rubric evaluation (`>= 4/5`).
+- **Traceability:** Change Requests `CR-022` and `CR-023` (`BUG-003` / `CAPA-006`) merged via `--no-ff`; release `v0.8.0`.
+
+### Added & Changed
+- `pyproject.toml` & `.github/workflows/ci.yml` (`CR-022`): Bump version to `0.8.0`, add `cyclonedx-bom>=7.2.0`, and verify two-run `CycloneDX` SBOM determinism and path hygiene in CI.
+- `tests/test_sbom_and_contracts.py` (`CR-022`): Cross-cluster Z3 SAT/UNSAT budget solver, 12-tool FastMCP namespace disjointness check, and `CycloneDX` SBOM reproducibility gate.
+- `tests/test_docs_quality.py` (`CR-023` / `BUG-003` / `CAPA-006`): Upgraded `_judge_doc_with_ollama` to JSON Schema grammar-constrained decoding (`DocRubricScore.model_json_schema()`, `temperature=0.0`, `timeout=180.0`).
+
+### Verification Evidence
+- `ruff check src tests` & `mypy src tests --strict`: `0` issues across all source and test modules.
+- `pytest -m "not integration"`: `34 passed` (including `CR-022` Z3 cluster and `CycloneDX` SBOM gates).
+- `pytest -v -m integration`: `3 passed` against live `hippo` Ollama (`qwen2.5-coder:7b`) and `rhino` PostgreSQL.
+
 ## [0.7.0] - 2026-11-23 — CR-017..CR-021: Engineering Profiles, SSoT Governance & Auditor Fix
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated cross-repository inconsistency in how theoretical foundations, library versions, workstation environment, SDLC/QA processes, and empirical benchmark metrics are presented to technical reviewers; enforced structural compliance via automated AST/regex quality gates.
