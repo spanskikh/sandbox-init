@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import os
 import re
 from enum import StrEnum
 from pathlib import Path
@@ -10,8 +9,10 @@ import httpx
 import pytest
 from pydantic import BaseModel, Field
 
+from sandbox_init.topology import resolve_topology_config
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+OLLAMA_URL = resolve_topology_config().ollama_url
 
 
 class ViolationCode(StrEnum):

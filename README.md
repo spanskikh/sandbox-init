@@ -34,6 +34,16 @@ flowchart LR
 
 ## Quickstart & QA Gate
 ```bash
+# Host offline verification gate (logged to logs/)
+./scripts/run_logged.sh qa_ruff -- .venv/bin/ruff check src tests
+./scripts/run_logged.sh qa_mypy -- .venv/bin/mypy src tests --strict
+./scripts/run_logged.sh qa_pytest -- .venv/bin/pytest -v -m "not integration"
+
+# Host/Docker topology-aware live cluster integration runner (CR-024)
+./scripts/run_integration.sh --dry-run
+./scripts/run_integration.sh
+
+# Containerized verification
 docker compose build verifier
 docker compose run --rm verifier sh -c "ruff check src tests && mypy src tests && pytest -v"
 ```

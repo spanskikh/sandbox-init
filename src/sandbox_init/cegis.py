@@ -11,9 +11,10 @@ from pydantic import ValidationError
 
 from sandbox_init.contracts import AllocationProposal, VerificationVerdict
 from sandbox_init.store import AuditStore
+from sandbox_init.topology import resolve_topology_config
 from sandbox_init.verifier import verify_allocation
 
-DEFAULT_OLLAMA_URL = os.getenv("OLLAMA_URL", "http://ollama:11434")
+DEFAULT_OLLAMA_URL = resolve_topology_config().ollama_url
 DEFAULT_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
 
 
@@ -33,15 +34,20 @@ async def _propose_from_llm(
     feedback: list[str],
     seed: int = 42,
 ) -> AllocationProposal:
-    """Запрашивает у локальной LLM JSON-предложение, ограниченное JSON-схемой Pydantic."""
+    """Query local Ollama for a schema-constrained AllocationProposal."""
     system_prompt = (
-        "You are a cluster resource planner. Return ONLY a JSON object matching the schema. "
-        "Allocate integer GiB for llm_ram_gb, db_ram_gb, total_budget_gb, and reserve_gb."
+        "You are a cluster resource planner. Return ONLY a JSON object "
+        "matching the schema. Allocate integer GiB for llm_ram_gb, "
+        "db_ram_gb, total_budget_gb, and reserve_gb."
     )
     user_prompt = f"Goal: {goal}\n"
     if feedback:
-        joined = "\n".join(f"- Iteration {i + 1} failed: {msg}" for i, msg in enumerate(feedback))
-        user_prompt += f"\nPrevious Z3 counterexamples (fix these constraints):\n{joined}\n"
+        joined = "\n".join(
+            f"- Iteration {i + 1} failed: {msg}" for i, msg in enumerate(feedback)
+        )
+        user_prompt += (
+            f"\nPrevious Z3 counterexamples (fix these constraints):\n{joined}\n"
+        )
 
     payload: dict[str, Any] = {
         "model": model,
@@ -72,7 +78,7 @@ async def run_cegis_loop(
     model: str = DEFAULT_MODEL,
     transport: httpx.AsyncBaseTransport | None = None,
 ) -> CegisResult:
-    """Замкнутый цикл CEGIS: LLM -> Pydantic -> Z3 -> Counterexample -> DuckDB."""
+    """Closed-loop CEGIS verifier: LLM -> Pydantic -> Z3 -> DuckDB."""
     feedback: list[str] = []
     history: list[VerificationVerdict] = []
     store = AuditStore(db_path)
@@ -118,12 +124,14 @@ async def run_cegis_loop(
 
 
 def main() -> None:
-    """CLI smoke-test: провоцируем первоначальный UNSAT, чтобы увидеть работу контрпримера Z3."""
+    """CLI smoke-test triggering an initial UNSAT before Z3 counterexample repair."""
     goal = (
         "Configure node 'rhino' (total_budget_gb=16, reserve_gb=4). "
-        "Try allocating llm_ram_gb=10 and db_ram_gb=4 first; if rejected, reduce llm_ram_gb to fit."
+        "Try allocating llm_ram_gb=10 and db_ram_gb=4 first; "
+        "if rejected, reduce llm_ram_gb to fit."
     )
-    res = asyncio.run(run_cegis_loop(goal=goal, db_path="/app/data/audit.duckdb", max_iters=4))
+    default_db = str(resolve_topology_config().audit_db_path)
+    res = asyncio.run(run_cegis_loop(goal=goal, db_path=default_db, max_iters=4))
     print(f"Converged: {res.converged} in {res.iterations} iteration(s)")
     for idx, v in enumerate(res.history, 1):
         print(

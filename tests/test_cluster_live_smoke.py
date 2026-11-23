@@ -10,10 +10,12 @@ import pytest
 
 from sandbox_init.store import AuditStore
 from sandbox_init.telemetry import collect_memory_snapshot
+from sandbox_init.topology import resolve_topology_config
 
-PG_HOST = os.getenv("CLUSTER_PG_HOST", "127.0.0.1")
-PG_PORT = int(os.getenv("CLUSTER_PG_PORT", "15432"))
-OLLAMA_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+TOPOLOGY = resolve_topology_config()
+PG_HOST = TOPOLOGY.pg_host
+PG_PORT = TOPOLOGY.pg_port
+OLLAMA_URL = TOPOLOGY.ollama_url
 MIN_HEADROOM_GB = float(os.getenv("MIN_HEADROOM_GB", "4.0"))
 
 

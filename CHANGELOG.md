@@ -2,6 +2,22 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.9.0] - 2026-11-23 — CR-024: Host/Docker Topology-Aware Integration Runner
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated host vs. Docker network and filesystem topology mismatches (`http://ollama:11434`, `host.docker.internal:15432`, `/app/data/*.duckdb`) that required manual `.env` overrides when running live `@pytest.mark.integration` verification across `hippo` and `rhino`.
+- **Traceability:** Change Request `CR-024` implemented in `sandbox-init` (`src/sandbox_init/topology.py`, `scripts/run_integration.sh`, `tests/test_topology.py`, `docs/dev-log/20261123-125200_cr-024_topology-integration-runner.py`).
+
+### Added & Changed
+- `src/sandbox_init/topology.py` (`CR-024`): Added `TopologyConfig` (`Pydantic v2`), `detect_runtime_topology`, `resolve_topology_config`, `build_topology_env`, and `--format env|json` CLI rewriting container endpoints (`ollama`, `host.docker.internal`, `/app/data/*`) to host-reachable `127.0.0.1` and `<repo_root>/data/*` while preserving explicit non-container overrides.
+- `src/sandbox_init/server.py`, `src/sandbox_init/cegis.py`, `tests/test_cluster_live_smoke.py`, `tests/test_docs_quality.py` (`CR-024` / `CAPA-002`): Wired default `DB_PATH`, `OLLAMA_URL`, `PG_HOST`, and `PG_PORT` through `resolve_topology_config()` while preserving the 4-tool FastMCP contract and English-only docstrings.
+- `scripts/run_integration.sh` & `tests/test_topology.py` (`CR-024` / `CAPA-003`): Added executable topology-aware integration runner (`--dry-run`, `--all-repos`, `PAGER=cat`, `<= 15` summary lines via `./scripts/run_logged.sh`) and 6 unit/CLI tests.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr024_ruff -- .venv/bin/ruff check src tests`: `All checks passed!` (`0` errors).
+- `./scripts/run_logged.sh cr024_mypy -- .venv/bin/mypy src tests --strict`: `Success: no issues found in 19 source files`.
+- `./scripts/run_logged.sh cr024_pytest_offline -- .venv/bin/pytest -v -m "not integration"`: `40 passed, 3 deselected`.
+- `./scripts/run_integration.sh --dry-run` & `./scripts/run_integration.sh`: `3 passed` against live `hippo` Ollama and `rhino` PostgreSQL (`127.0.0.1:15432`).
+
 ## [0.8.0] - 2026-11-23 — CR-022 & CR-023: Cross-Cluster Z3 Contract, SBOM Gate & Rubric Sign-Off
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Enforced cross-cluster Z3 RAM budget invariants (`hippo` 24 GiB / `rhino` 16 GiB), 12-tool FastMCP namespace disjointness, deterministic `CycloneDX` SBOM reproducibility, and grammar-constrained live Ollama documentation rubric evaluation (`>= 4/5`).

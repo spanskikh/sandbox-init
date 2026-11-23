@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 from fastmcp import FastMCP
 
 from sandbox_init.cegis import run_cegis_loop
@@ -13,10 +11,11 @@ from sandbox_init.contracts import (
 )
 from sandbox_init.store import AuditStore
 from sandbox_init.telemetry import collect_memory_snapshot
+from sandbox_init.topology import resolve_topology_config
 from sandbox_init.verifier import verify_allocation, verify_cluster_plan
 
 mcp = FastMCP("neuro-symbolic-verifier")
-DB_PATH = os.getenv("AUDIT_DB_PATH", "/app/data/audit.duckdb")
+DB_PATH = str(resolve_topology_config().audit_db_path)
 
 
 @mcp.tool()
@@ -27,7 +26,7 @@ def check_cluster_allocation(
     total_budget_gb: int,
     reserve_gb: int = 4,
 ) -> dict[str, object]:
-    """Валидирует гипотезу распределения RAM одного узла через Pydantic v2 + Z3 + DuckDB."""
+    """Validate single-node RAM allocation via Pydantic v2, Z3, and DuckDB."""
     proposal = AllocationProposal(
         node=node,  # type: ignore[arg-type]
         llm_ram_gb=llm_ram_gb,
@@ -53,7 +52,7 @@ def check_cluster_plan(
     hippo_reserve_gb: int = 4,
     rhino_reserve_gb: int = 3,
 ) -> dict[str, object]:
-    """Проверяет кросс-узловой план размещения (hippo 24G + rhino 16G) через Z3."""
+    """Verify cross-node RAM allocation plan across hippo (24G) and rhino (16G)."""
     plan = ClusterPlanProposal(
         hippo=NodeAllocation(
             llm_ram_gb=hippo_llm_gb,
@@ -71,7 +70,7 @@ def check_cluster_plan(
 
 @mcp.tool()
 async def synthesize_valid_allocation(goal: str, max_iters: int = 5) -> dict[str, object]:
-    """Запускает цикл CEGIS с локальной LLM (Ollama) до получения SAT-конфигурации от Z3."""
+    """Run CEGIS synthesis loop with local Ollama until Z3 returns SAT."""
     result = await run_cegis_loop(goal=goal, db_path=DB_PATH, max_iters=max_iters)
     return {
         "converged": result.converged,
