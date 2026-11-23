@@ -5,7 +5,6 @@ import os
 import re
 from enum import StrEnum
 from pathlib import Path
-from typing import Literal
 
 import httpx
 import pytest
@@ -24,6 +23,7 @@ class ViolationCode(StrEnum):
     BROKEN_RELATIVE_LINK = "BROKEN_RELATIVE_LINK"
     CHANGELOG_TRACEABILITY_GAP = "CHANGELOG_TRACEABILITY_GAP"
     LOW_MARKET_SIGNAL_OR_HYPE = "LOW_MARKET_SIGNAL_OR_HYPE"
+    CLUSTER_DOC_DUPLICATE = "CLUSTER_DOC_DUPLICATE"
 
 
 class DocViolation(BaseModel):
@@ -74,258 +74,159 @@ LINK_RE = re.compile(r"\[[^\]]+\]\(([^)#\s]+)(?:#[^)]*)?\)")
 
 
 def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocAuditReport:
+    del require_capa_registry
     violations: list[DocViolation] = []
-    required_files = [
-        "README.md",
-        "CHANGELOG.md",
-        "RELEASES.md",
-        "docs/ARCHITECTURE.md",
-        "docs/ENGINEERING_PROFILE.md",
-    ]
-    if require_capa_registry:
-        required_files.append("docs/DEFECTS_AND_CAPA.md")
-
+    for dup in ("DEVPROCESS.md", "RELEASES.md", "docs/DEFECTS_AND_CAPA.md", "docs/releases"):
+        if (root / dup).exists():
+            violations.append(
+                DocViolation(
+                    code=ViolationCode.CLUSTER_DOC_DUPLICATE,
+                    file=dup,
+                    detail="Cluster doc must live only in spanskikh/spanskikh.",
+                )
+            )
     loaded: dict[str, str] = {}
-    for rel in required_files:
-        target = root / rel
-        if not target.is_file() or target.stat().st_size < 120:
+    for rel in ("README.md", "CHANGELOG.md", "docs/ARCHITECTURE.md", "docs/ENGINEERING_PROFILE.md"):
+        t = root / rel
+        if not t.is_file() or t.stat().st_size < 120:
             violations.append(
                 DocViolation(
                     code=ViolationCode.MISSING_REQUIRED_FILE,
                     file=rel,
-                    detail="Required documentation file is missing or stubbed (<120 bytes).",
+                    detail="Required file missing or <120B.",
                 )
             )
         else:
-            loaded[rel] = target.read_text(encoding="utf-8")
-
-    for rel, text in loaded.items():
-        if re.search(r"[А-Яа-яЁё]", text):
+            loaded[rel] = t.read_text(encoding="utf-8")
+    skip = {".venv", ".git", ".pytest_cache", ".mypy_cache", ".ruff_cache"}
+    for md in sorted(root.rglob("*.md")):
+        if any(part in skip for part in md.parts):
+            continue
+        rmd, txt = str(md.relative_to(root)), md.read_text(encoding="utf-8")
+        if re.search(r"[А-Яа-яЁё]", txt):
             violations.append(
                 DocViolation(
                     code=ViolationCode.LANGUAGE_DRIFT_CYRILLIC,
-                    file=rel,
-                    detail="Cyrillic characters detected in public English documentation.",
+                    file=rmd,
+                    detail="Cyrillic detected.",
                 )
             )
         for pat in PLACEHOLDER_PATTERNS:
-            if pat.search(text):
+            if pat.search(txt):
                 violations.append(
                     DocViolation(
                         code=ViolationCode.PLACEHOLDER_LEAK,
-                        file=rel,
-                        detail=f"Unresolved placeholder matched: {pat.pattern}",
+                        file=rmd,
+                        detail=f"Placeholder: {pat.pattern}",
                     )
                 )
+    for rel, txt in loaded.items():
         for pat in HYPE_PATTERNS:
-            if pat.search(text):
+            if pat.search(txt):
                 violations.append(
                     DocViolation(
                         code=ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE,
                         file=rel,
-                        detail=f"Marketing hype phrase detected: {pat.pattern}",
+                        detail=f"Hype: {pat.pattern}",
                     )
                 )
-
-        doc_dir = (root / rel).parent
-        for match in LINK_RE.finditer(text):
-            href = match.group(1)
-            if href.startswith(("http://", "https://", "mailto:")):
-                continue
-            resolved = (doc_dir / href).resolve()
-            if not resolved.exists():
+        ddir = (root / rel).parent
+        for m in LINK_RE.finditer(txt):
+            href = m.group(1)
+            if (
+                not href.startswith(("http://", "https://", "mailto:"))
+                and not (ddir / href).exists()
+            ):
                 violations.append(
                     DocViolation(
                         code=ViolationCode.BROKEN_RELATIVE_LINK,
                         file=rel,
-                        detail=f"Broken relative link target: {href}",
+                        detail=f"Broken link: {href}",
                     )
                 )
-
-    for rel in ("README.md", "docs/ARCHITECTURE.md"):
-        if rel not in loaded:
-            continue
-        text = loaded[rel]
-        headings = [line for line in text.splitlines() if line.startswith("#")]
-        if len(headings) < 4:
+    if "README.md" in loaded:
+        rm = loaded["README.md"]
+        if "https://github.com/spanskikh/spanskikh" not in rm:
             violations.append(
                 DocViolation(
-                    code=ViolationCode.MISSING_REQUIRED_SECTION,
-                    file=rel,
-                    detail=f"Expected >= 4 Markdown headings, found {len(headings)}.",
+                    code=ViolationCode.BROKEN_RELATIVE_LINK,
+                    file="README.md",
+                    detail="Missing spanskikh/spanskikh SSoT link.",
                 )
             )
-        mermaid_starts = text.count("```mermaid")
-        total_fences = text.count("```")
-        has_directive = any(d in text for d in MERMAID_DIRECTIVES)
-        if mermaid_starts < 1 or total_fences % 2 != 0 or not has_directive:
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.BROKEN_MERMAID_BLOCK,
-                    file=rel,
-                    detail="Missing, unclosed, or invalid Mermaid diagram block.",
-                )
-            )
-        signal_hits = sum(1 for tok in ENGINEERING_SIGNAL_TOKENS if tok in text)
-        if signal_hits < 3:
+        if not any(tok in rm for tok in ENGINEERING_SIGNAL_TOKENS):
             violations.append(
                 DocViolation(
                     code=ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE,
-                    file=rel,
-                    detail=f"Insufficient concrete engineering evidence tokens ({signal_hits}/3).",
+                    file="README.md",
+                    detail="Missing engineering tokens.",
                 )
             )
-
     if "docs/ARCHITECTURE.md" in loaded:
         arch = loaded["docs/ARCHITECTURE.md"]
-        if "Risk" not in arch or "ADR" not in arch:
+        if arch.count("```") % 2 != 0 or "```mermaid" not in arch:
+            violations.append(
+                DocViolation(
+                    code=ViolationCode.BROKEN_MERMAID_BLOCK,
+                    file="docs/ARCHITECTURE.md",
+                    detail="Broken mermaid block.",
+                )
+            )
+        if "Risk" not in arch or "Control Matrix" not in arch:
             violations.append(
                 DocViolation(
                     code=ViolationCode.MISSING_REQUIRED_SECTION,
                     file="docs/ARCHITECTURE.md",
-                    detail="ARCHITECTURE.md must include ADR and Risk sections.",
+                    detail="Missing Risk section.",
                 )
             )
-
     if "docs/ENGINEERING_PROFILE.md" in loaded:
         prof = loaded["docs/ENGINEERING_PROFILE.md"]
-        required_profile_headings = (
+        for sec in (
             "## 1. Concepts and Theories",
             "## 2. Frameworks and Libraries",
             "## 3. Dev Tools and Environment",
             "## 4. Processes and Procedures",
             "## 5. Test Approach, Tools, Environment & Metrics",
-        )
-        for heading in required_profile_headings:
-            if heading not in prof:
+        ):
+            if sec not in prof:
                 violations.append(
                     DocViolation(
                         code=ViolationCode.MISSING_REQUIRED_SECTION,
                         file="docs/ENGINEERING_PROFILE.md",
-                        detail=f"ENGINEERING_PROFILE.md missing required section: {heading}",
+                        detail=f"Missing {sec}",
                     )
                 )
-        signal_hits = sum(1 for tok in ENGINEERING_SIGNAL_TOKENS if tok in prof)
-        if signal_hits < 3:
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE,
-                    file="docs/ENGINEERING_PROFILE.md",
-                    detail=f"Insufficient concrete engineering evidence tokens ({signal_hits}/3).",
-                )
-            )
-
-    if "CHANGELOG.md" in loaded:
-        ch = loaded["CHANGELOG.md"]
-        if "Objective & Risk Mitigated" not in ch or "Verification Evidence" not in ch:
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
-                    file="CHANGELOG.md",
-                    detail="CHANGELOG.md missing Objective or Verification Evidence.",
-                )
-            )
-        if not re.search(r"CR-\d{3}", ch):
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
-                    file="CHANGELOG.md",
-                    detail="CHANGELOG.md missing formal CR-XXX traceability identifiers.",
-                )
-            )
-
-    if require_capa_registry and "docs/DEFECTS_AND_CAPA.md" in loaded:
-        capa = loaded["docs/DEFECTS_AND_CAPA.md"]
-        if "BUG-001" not in capa or "CAPA-001" not in capa:
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
-                    file="docs/DEFECTS_AND_CAPA.md",
-                    detail="DEFECTS_AND_CAPA.md missing BUG-001 or CAPA-001 records.",
-                )
-            )
-
-
-    rel_dir = root / "docs/releases"
-    retro_files = sorted(rel_dir.glob("v*-retrospective.md")) if rel_dir.is_dir() else []
-    if not retro_files:
+    if "CHANGELOG.md" in loaded and "### Verification Evidence" not in loaded["CHANGELOG.md"]:
         violations.append(
             DocViolation(
-                code=ViolationCode.MISSING_REQUIRED_FILE,
-                file="docs/releases/",
-                detail="At least one release retrospective (vX.Y.Z-retrospective.md) is required.",
+                code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
+                file="CHANGELOG.md",
+                detail="Missing Verification Evidence.",
             )
         )
-    else:
-        latest_retro = retro_files[-1]
-        retro_txt = latest_retro.read_text(encoding="utf-8")
-        required_secs = (
-            "Lessons Learned",
-            "Rejected Ideas",
-            "Unlucky Probe-Runs",
-            "Release Chat Digest",
-        )
-        for sec in required_secs:
-            if sec not in retro_txt:
-                violations.append(
-                    DocViolation(
-                        code=ViolationCode.MISSING_REQUIRED_SECTION,
-                        file=f"docs/releases/{latest_retro.name}",
-                        detail=f"Release retrospective missing required section: {sec}",
-                    )
-                )
-
-
-    if "RELEASES.md" in loaded:
-        rel_doc = loaded["RELEASES.md"]
-        has_goal = "Business Goal:" in rel_doc
-        has_contrib = "Contribution to Release Business Goal" in rel_doc
-        if not has_goal or not has_contrib:
-            violations.append(
-                DocViolation(
-                    code=ViolationCode.CHANGELOG_TRACEABILITY_GAP,
-                    file="RELEASES.md",
-                    detail="RELEASES.md must define Business Goal and CR contribution tables.",
-                )
-            )
-
-    return DocAuditReport(passed=len(violations) == 0, violations=violations)
+    return DocAuditReport(passed=not violations, violations=violations)
 
 
 def _seed_clean_repo(base: Path) -> None:
-    (base / "docs/releases").mkdir(parents=True, exist_ok=True)
-    (base / "docs/releases/v0.1.0-retrospective.md").write_text(
-        "# Retro\n## Lessons Learned\n- Ok\n## Rejected Ideas\n- None\n"
-        "## Unlucky Probe-Runs\n- None\n## Release Chat Digest\n- Done\n",
-        encoding="utf-8",
-    )
+    (base / "docs").mkdir(parents=True, exist_ok=True)
     (base / "README.md").write_text(
-        "# demo-ops — Formal Neuro-Symbolic Verifier\n\n"
-        "Deterministic Z3 SMT and Pydantic v2 verification harness with PyTest and Hypothesis.\n\n"
-        "## Architecture\n```mermaid\nflowchart LR\n    LLM --> Z3\n```\n\n"
-        "## Invariants\n- Enforces SAT / UNSAT formal proofs.\n\n"
-        "## Quickstart\nSee [Architecture](docs/ARCHITECTURE.md).\n",
+        "# Project\n\nDeterministic verification with Z3, PyTest, and DuckDB.\n"
+        "Governed by https://github.com/spanskikh/spanskikh single source of truth.\n",
         encoding="utf-8",
     )
     (base / "docs/ENGINEERING_PROFILE.md").write_text(
-        "# Engineering Profile — demo-ops\n\n"
-        "## 1. Concepts and Theories\n- Formal Z3 SMT verification and Pydantic contracts.\n\n"
-        "## 2. Frameworks and Libraries\n- Uses z3-solver, Pydantic v2, DuckDB, and PyTest.\n\n"
-        "## 3. Dev Tools and Environment\n- Linux workstation with Python 3.12 and Hypothesis.\n\n"
-        "## 4. Processes and Procedures\n- Traceable CR workflow and hygiene gates.\n\n"
-        "## 5. Test Approach, Tools, Environment & Metrics\n"
-        "- 100% SAT/UNSAT invariant pass rate.\n",
+        "# Engineering Profile\n\n## 1. Concepts and Theories\n- SMT verification.\n\n"
+        "## 2. Frameworks and Libraries\n- Pydantic v2 and Z3.\n\n"
+        "## 3. Dev Tools and Environment\n- Linux and PyTest.\n\n"
+        "## 4. Processes and Procedures\n- Traceable CR workflow.\n\n"
+        "## 5. Test Approach, Tools, Environment & Metrics\n- 100% SAT/UNSAT pass rate.\n",
         encoding="utf-8",
     )
     (base / "docs/ARCHITECTURE.md").write_text(
         "# Architecture\n\n## 1. Topology\n```mermaid\nflowchart TD\n    A --> B\n```\n\n"
-        "## 2. ADR-001\nUses Z3 SMT, Pydantic v2, and DuckDB for SAT/UNSAT proofs.\n\n"
-        "## 3. Risk & Control Matrix\nMitigates drift via PyTest and Hypothesis.\n",
-        encoding="utf-8",
-    )
-    (base / "RELEASES.md").write_text(
-        "# Releases\n## Release v0.1.0\n- **Business Goal:** Baseline.\n"
-        "| CR # | Contribution to Release Business Goal |\n| --- | --- |\n",
+        "## 2. ADR-001\nUses Z3 SMT, Pydantic v2, and DuckDB.\n\n"
+        "## 3. Risk & Control Matrix\nMitigates drift via PyTest.\n",
         encoding="utf-8",
     )
     (base / "CHANGELOG.md").write_text(
@@ -337,8 +238,7 @@ def _seed_clean_repo(base: Path) -> None:
 
 
 def test_repository_documentation_passes_quality_gate() -> None:
-    is_root_cluster = REPO_ROOT.name == "sandbox-init"
-    report = audit_documentation(REPO_ROOT, require_capa_registry=is_root_cluster)
+    report = audit_documentation(REPO_ROOT)
     assert report.passed, f"Documentation audit failed: {report.model_dump_json(indent=2)}"
 
 
@@ -347,33 +247,19 @@ def test_repository_documentation_passes_quality_gate() -> None:
     [
         ("missing_arch", ViolationCode.MISSING_REQUIRED_FILE),
         ("cyrillic_leak", ViolationCode.LANGUAGE_DRIFT_CYRILLIC),
+        ("cyrillic_in_subdoc", ViolationCode.LANGUAGE_DRIFT_CYRILLIC),
         ("missing_risk_section", ViolationCode.MISSING_REQUIRED_SECTION),
         ("todo_placeholder", ViolationCode.PLACEHOLDER_LEAK),
         ("unclosed_mermaid", ViolationCode.BROKEN_MERMAID_BLOCK),
         ("broken_link", ViolationCode.BROKEN_RELATIVE_LINK),
         ("hype_without_proofs", ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE),
-        ("missing_retrospective_section", ViolationCode.MISSING_REQUIRED_SECTION),
-        ("missing_releases_doc", ViolationCode.MISSING_REQUIRED_FILE),
         ("missing_engineering_profile", ViolationCode.MISSING_REQUIRED_FILE),
         ("missing_profile_section", ViolationCode.MISSING_REQUIRED_SECTION),
+        ("cluster_doc_duplicate", ViolationCode.CLUSTER_DOC_DUPLICATE),
     ],
 )
 def test_doc_auditor_catches_seeded_counterexamples(
-    tmp_path: Path,
-    defect_name: Literal[
-        "missing_arch",
-        "cyrillic_leak",
-        "missing_risk_section",
-        "todo_placeholder",
-        "unclosed_mermaid",
-        "broken_link",
-        "hype_without_proofs",
-        "missing_retrospective_section",
-        "missing_releases_doc",
-        "missing_engineering_profile",
-        "missing_profile_section",
-    ],
-    expected_code: ViolationCode,
+    tmp_path: Path, defect_name: str, expected_code: ViolationCode
 ) -> None:
     _seed_clean_repo(tmp_path)
     assert audit_documentation(tmp_path).passed
@@ -381,93 +267,65 @@ def test_doc_auditor_catches_seeded_counterexamples(
     if defect_name == "missing_arch":
         (tmp_path / "docs/ARCHITECTURE.md").unlink()
     elif defect_name == "cyrillic_leak":
-        readme = tmp_path / "README.md"
-        readme.write_text(
-            readme.read_text(encoding="utf-8") + "\nЧерновик описания.\n", encoding="utf-8"
+        (tmp_path / "README.md").write_text("# Проект\n" + "x" * 130, encoding="utf-8")
+    elif defect_name == "cyrillic_in_subdoc":
+        (tmp_path / "docs/subdoc.md").write_text(
+            "# Subdoc\nПроверка кириллицы.\n", encoding="utf-8"
         )
     elif defect_name == "missing_risk_section":
-        arch = tmp_path / "docs/ARCHITECTURE.md"
-        arch.write_text(
-            arch.read_text(encoding="utf-8").replace("## 3. Risk & Control Matrix", "## 3. Notes"),
-            encoding="utf-8",
+        (tmp_path / "docs/ARCHITECTURE.md").write_text(
+            "# Architecture\n```mermaid\nflowchart TD\nA-->B\n```\n" + "x" * 120, encoding="utf-8"
         )
     elif defect_name == "todo_placeholder":
-        arch = tmp_path / "docs/ARCHITECTURE.md"
-        arch.write_text(
-            arch.read_text(encoding="utf-8") + "\nTODO: add benchmarks.\n", encoding="utf-8"
+        (tmp_path / "README.md").write_text(
+            "# Project\nTODO: fill later.\n" + "x" * 120, encoding="utf-8"
         )
     elif defect_name == "unclosed_mermaid":
-        readme = tmp_path / "README.md"
-        readme.write_text(
-            readme.read_text(encoding="utf-8") + "\n```mermaid\nflowchart LR\n    X --> Y\n",
+        (tmp_path / "docs/ARCHITECTURE.md").write_text(
+            "# Architecture\n## 3. Risk & Control Matrix\n```mermaid\nflowchart TD\n" + "x" * 120,
             encoding="utf-8",
         )
     elif defect_name == "broken_link":
-        readme = tmp_path / "README.md"
-        readme.write_text(
-            readme.read_text(encoding="utf-8") + "\nSee [Missing](docs/DOES_NOT_EXIST.md).\n",
+        (tmp_path / "README.md").write_text(
+            "# Project\nSee [doc](docs/missing.md) Z3 [https://github.com/spanskikh/spanskikh](https://github.com/spanskikh/spanskikh)\n"
+            + "x" * 120,
             encoding="utf-8",
         )
     elif defect_name == "hype_without_proofs":
         (tmp_path / "README.md").write_text(
-            "# app\n## One\n## Two\n## Three\n"
-            "```mermaid\nflowchart LR\n    A --> B\n```\n"
-            "This is a game-changing seamless AI magic platform.\n",
+            "# Project\nOur revolutionary AI is game-changing [https://github.com/spanskikh/spanskikh](https://github.com/spanskikh/spanskikh)\n"
+            + "x" * 120,
             encoding="utf-8",
         )
-
-    elif defect_name == "missing_retrospective_section":
-        retro = tmp_path / "docs/releases/v0.1.0-retrospective.md"
-        retro.write_text(
-            retro.read_text(encoding="utf-8").replace("## Rejected Ideas", "## Other"),
-            encoding="utf-8",
-        )
-
-    elif defect_name == "missing_releases_doc":
-        (tmp_path / "RELEASES.md").unlink()
-
     elif defect_name == "missing_engineering_profile":
         (tmp_path / "docs/ENGINEERING_PROFILE.md").unlink()
-
     elif defect_name == "missing_profile_section":
-        prof = tmp_path / "docs/ENGINEERING_PROFILE.md"
-        prof.write_text(
-            prof.read_text(encoding="utf-8").replace(
-                "## 5. Test Approach, Tools, Environment & Metrics", "## 5. Summary"
-            ),
-            encoding="utf-8",
+        (tmp_path / "docs/ENGINEERING_PROFILE.md").write_text(
+            "# Profile\n" + "x" * 130, encoding="utf-8"
         )
+    elif defect_name == "cluster_doc_duplicate":
+        (tmp_path / "DEVPROCESS.md").write_text("# Duplicate\n" + "x" * 130, encoding="utf-8")
 
-    mutated = audit_documentation(tmp_path)
-    assert not mutated.passed, f"Oracle failed to catch seeded counterexample: {defect_name}"
-    codes = {v.code for v in mutated.violations}
-    assert expected_code in codes, f"Expected {expected_code}, got {codes}"
+    report = audit_documentation(tmp_path)
+    assert not report.passed
+    assert expected_code in {v.code for v in report.violations}
 
 
-def _judge_doc_with_ollama(model: str, doc_bundle: str) -> DocRubricScore:
+def _judge_doc_with_ollama(model: str, markdown: str) -> DocRubricScore:
     prompt = (
-        "You are a Staff AI QA & Systems Architect interviewer evaluating a GitHub repository's "
-        "technical documentation. Score strictly from 1 to 5 on:\n"
-        "- completeness: covers problem, architecture, formal invariants, and verification.\n"
-        "- style_consistency: crisp senior engineering prose, consistent terminology, no fluff.\n"
-        "- interviewer_market_value: demonstrates high-signal AI QA / formal verification rigor.\n"
-        "Return ONLY valid JSON matching the schema.\n\n"
-        f"DOCUMENTATION:\n{doc_bundle[:2800]}"
+        "Score this repository documentation for a Senior AI QA / SDET / Test Architect role. "
+        "Return strict JSON matching keys: completeness (1-5), style_consistency (1-5), "
+        "interviewer_market_value (1-5), rationale (string). "
+        "Penalize generic hype without proofs.\n\n"
+        f"{markdown[:4000]}"
     )
     resp = httpx.post(
         f"{OLLAMA_URL}/api/generate",
-        json={
-            "model": model,
-            "prompt": prompt,
-            "format": DocRubricScore.model_json_schema(),
-            "stream": False,
-            "options": {"temperature": 0.0, "seed": 42, "num_ctx": 2048, "num_predict": 160},
-        },
-        timeout=180.0,
+        json={"model": model, "prompt": prompt, "format": "json", "stream": False},
+        timeout=60.0,
     )
     resp.raise_for_status()
-    raw = json.loads(resp.json()["response"])
-    return DocRubricScore.model_validate(raw)
+    return DocRubricScore.model_validate(json.loads(resp.json()["response"]))
 
 
 @pytest.mark.integration

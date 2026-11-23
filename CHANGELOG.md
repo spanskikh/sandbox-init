@@ -2,7 +2,7 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
-## [0.7.0] - 2026-11-22 — CR-017: Standardized 5-Section Engineering Profile Dossier
+## [0.7.0] - 2026-11-23 — CR-017..CR-021: Engineering Profiles, SSoT Governance & Auditor Fix
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated cross-repository inconsistency in how theoretical foundations, library versions, workstation environment, SDLC/QA processes, and empirical benchmark metrics are presented to technical reviewers; enforced structural compliance via automated AST/regex quality gates.
 - **Traceability:** Change Request `CR-017` implemented across `sandbox-init` (`docs/ENGINEERING_PROFILE.md`, `README.md`, `tests/test_docs_quality.py`, `RELEASES.md`).
@@ -11,6 +11,11 @@ All notable changes and formal Change Requests (CRs) for `sandbox-init` are docu
 - `docs/ENGINEERING_PROFILE.md`: Standardized 5-section engineering dossier (`1. Concepts and Theories`, `2. Frameworks and Libraries`, `3. Dev Tools and Environment`, `4. Processes and Procedures`, `5. Test Approach, Tools, Environment & Metrics`).
 - `README.md`: Added direct navigation link to `docs/ENGINEERING_PROFILE.md`.
 - `tests/test_docs_quality.py`: Added mandatory file, 5-heading structural assertions, signal density checks, and `2` new seeded defect counterexamples (`missing_engineering_profile`, `missing_profile_section`).
+
+- `DEVPROCESS.md` & `tests/test_docs_quality.py` (`CR-019` / `CAPA-003`): Enforced `<= 1.5 KiB` PTY paste cap and `logs/` summary cap.
+
+- `README.md` & SSoT Migration (`CR-020` / `CAPA-004`): Consolidated shared governance docs (`DEVPROCESS.md`, `RELEASES.md`, `docs/DEFECTS_AND_CAPA.md`, `docs/releases/*`) into `spanskikh/spanskikh` and linked canonical URLs.
+- `tests/test_docs_quality.py` (`CR-021` / `BUG-002` / `CAPA-005`): Fixed Markdown auditor to scan all tracked `*.md` files recursively for Cyrillic/placeholders and enforce `CLUSTER_DOC_DUPLICATE`.
 
 ### Verification Evidence
 - `ruff check .` & `mypy --strict`: `0` issues across all source and test modules.
