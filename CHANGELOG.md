@@ -2,6 +2,20 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.7.0] - 2026-11-22 — CR-017: Standardized 5-Section Engineering Profile Dossier
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated cross-repository inconsistency in how theoretical foundations, library versions, workstation environment, SDLC/QA processes, and empirical benchmark metrics are presented to technical reviewers; enforced structural compliance via automated AST/regex quality gates.
+- **Traceability:** Change Request `CR-017` implemented across `sandbox-init` (`docs/ENGINEERING_PROFILE.md`, `README.md`, `tests/test_docs_quality.py`, `RELEASES.md`).
+
+### Added
+- `docs/ENGINEERING_PROFILE.md`: Standardized 5-section engineering dossier (`1. Concepts and Theories`, `2. Frameworks and Libraries`, `3. Dev Tools and Environment`, `4. Processes and Procedures`, `5. Test Approach, Tools, Environment & Metrics`).
+- `README.md`: Added direct navigation link to `docs/ENGINEERING_PROFILE.md`.
+- `tests/test_docs_quality.py`: Added mandatory file, 5-heading structural assertions, signal density checks, and `2` new seeded defect counterexamples (`missing_engineering_profile`, `missing_profile_section`).
+
+### Verification Evidence
+- `ruff check .` & `mypy --strict`: `0` issues across all source and test modules.
+- `pytest -m "not integration"`: All unit, contract, hygiene, and documentation quality tests green (`+2` new counterexample cases).
+
 ## [0.6.0] - 2026-11-22 — CR-014, CR-015 & CR-016: Pre-Public Hygiene Gate, Portfolio Sync & Public CI / CycloneDX Activation
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated secret, PII, workstation path, and runtime artifact leakage risks prior to making repositories public, synchronized showcase documentation with verified `v0.5.0` metrics, and activated GitHub Actions CI + `CycloneDX` SBOM generation.

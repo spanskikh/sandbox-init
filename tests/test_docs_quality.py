@@ -75,7 +75,13 @@ LINK_RE = re.compile(r"\[[^\]]+\]\(([^)#\s]+)(?:#[^)]*)?\)")
 
 def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocAuditReport:
     violations: list[DocViolation] = []
-    required_files = ["README.md", "CHANGELOG.md", "RELEASES.md", "docs/ARCHITECTURE.md"]
+    required_files = [
+        "README.md",
+        "CHANGELOG.md",
+        "RELEASES.md",
+        "docs/ARCHITECTURE.md",
+        "docs/ENGINEERING_PROFILE.md",
+    ]
     if require_capa_registry:
         required_files.append("docs/DEFECTS_AND_CAPA.md")
 
@@ -181,6 +187,34 @@ def audit_documentation(root: Path, require_capa_registry: bool = False) -> DocA
                 )
             )
 
+    if "docs/ENGINEERING_PROFILE.md" in loaded:
+        prof = loaded["docs/ENGINEERING_PROFILE.md"]
+        required_profile_headings = (
+            "## 1. Concepts and Theories",
+            "## 2. Frameworks and Libraries",
+            "## 3. Dev Tools and Environment",
+            "## 4. Processes and Procedures",
+            "## 5. Test Approach, Tools, Environment & Metrics",
+        )
+        for heading in required_profile_headings:
+            if heading not in prof:
+                violations.append(
+                    DocViolation(
+                        code=ViolationCode.MISSING_REQUIRED_SECTION,
+                        file="docs/ENGINEERING_PROFILE.md",
+                        detail=f"ENGINEERING_PROFILE.md missing required section: {heading}",
+                    )
+                )
+        signal_hits = sum(1 for tok in ENGINEERING_SIGNAL_TOKENS if tok in prof)
+        if signal_hits < 3:
+            violations.append(
+                DocViolation(
+                    code=ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE,
+                    file="docs/ENGINEERING_PROFILE.md",
+                    detail=f"Insufficient concrete engineering evidence tokens ({signal_hits}/3).",
+                )
+            )
+
     if "CHANGELOG.md" in loaded:
         ch = loaded["CHANGELOG.md"]
         if "Objective & Risk Mitigated" not in ch or "Verification Evidence" not in ch:
@@ -273,6 +307,16 @@ def _seed_clean_repo(base: Path) -> None:
         "## Quickstart\nSee [Architecture](docs/ARCHITECTURE.md).\n",
         encoding="utf-8",
     )
+    (base / "docs/ENGINEERING_PROFILE.md").write_text(
+        "# Engineering Profile — demo-ops\n\n"
+        "## 1. Concepts and Theories\n- Formal Z3 SMT verification and Pydantic contracts.\n\n"
+        "## 2. Frameworks and Libraries\n- Uses z3-solver, Pydantic v2, DuckDB, and PyTest.\n\n"
+        "## 3. Dev Tools and Environment\n- Linux workstation with Python 3.12 and Hypothesis.\n\n"
+        "## 4. Processes and Procedures\n- Traceable CR workflow and hygiene gates.\n\n"
+        "## 5. Test Approach, Tools, Environment & Metrics\n"
+        "- 100% SAT/UNSAT invariant pass rate.\n",
+        encoding="utf-8",
+    )
     (base / "docs/ARCHITECTURE.md").write_text(
         "# Architecture\n\n## 1. Topology\n```mermaid\nflowchart TD\n    A --> B\n```\n\n"
         "## 2. ADR-001\nUses Z3 SMT, Pydantic v2, and DuckDB for SAT/UNSAT proofs.\n\n"
@@ -310,6 +354,8 @@ def test_repository_documentation_passes_quality_gate() -> None:
         ("hype_without_proofs", ViolationCode.LOW_MARKET_SIGNAL_OR_HYPE),
         ("missing_retrospective_section", ViolationCode.MISSING_REQUIRED_SECTION),
         ("missing_releases_doc", ViolationCode.MISSING_REQUIRED_FILE),
+        ("missing_engineering_profile", ViolationCode.MISSING_REQUIRED_FILE),
+        ("missing_profile_section", ViolationCode.MISSING_REQUIRED_SECTION),
     ],
 )
 def test_doc_auditor_catches_seeded_counterexamples(
@@ -324,6 +370,8 @@ def test_doc_auditor_catches_seeded_counterexamples(
         "hype_without_proofs",
         "missing_retrospective_section",
         "missing_releases_doc",
+        "missing_engineering_profile",
+        "missing_profile_section",
     ],
     expected_code: ViolationCode,
 ) -> None:
@@ -377,6 +425,18 @@ def test_doc_auditor_catches_seeded_counterexamples(
 
     elif defect_name == "missing_releases_doc":
         (tmp_path / "RELEASES.md").unlink()
+
+    elif defect_name == "missing_engineering_profile":
+        (tmp_path / "docs/ENGINEERING_PROFILE.md").unlink()
+
+    elif defect_name == "missing_profile_section":
+        prof = tmp_path / "docs/ENGINEERING_PROFILE.md"
+        prof.write_text(
+            prof.read_text(encoding="utf-8").replace(
+                "## 5. Test Approach, Tools, Environment & Metrics", "## 5. Summary"
+            ),
+            encoding="utf-8",
+        )
 
     mutated = audit_documentation(tmp_path)
     assert not mutated.passed, f"Oracle failed to catch seeded counterexample: {defect_name}"

@@ -4,6 +4,17 @@ Official release roadmap and business-value traceability matrix across the local
 
 ---
 
+## Release `v0.7.0` (In Progress — 2026-11-22)
+- **Business Goal:** Standardize engineering competence, stack, process, and QA metrics documentation (`docs/ENGINEERING_PROFILE.md`) across all four cluster repositories and establish a unified root GitHub profile showcase (`spanskikh/spanskikh`) with live CI badges and architecture topology.
+- **Refinement Record:** [`docs/releases/v0.7.0-refine.md`](docs/releases/v0.7.0-refine.md)
+
+| CR # & Short Name | Repository | Short Task Description | Contribution to Release Business Goal | Architecture Learning Value | Formal Invariant / DoD |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **CR-017: Standardized 5-Section Engineering Profile Dossier** | All 4 repositories | Author `docs/ENGINEERING_PROFILE.md` with 5 mandatory competence/QA sections, link from `README.md`, and enforce via `tests/test_docs_quality.py`. | Provides technical interviewers and architects a uniform, auditable specification of theories, libraries, environment, processes, and empirical QA metrics per repository. | Standardized architectural dossier modeling and automated section/link invariant enforcement. | `docs/ENGINEERING_PROFILE.md` present with all 5 mandatory headings; `test_docs_quality.py` and `test_release_hygiene.py` green across all 4 repos. |
+| **CR-018: Root GitHub Profile Showcase (`spanskikh/spanskikh`)** | `spanskikh/spanskikh` + cluster `v0.7.0` tags | Create root profile repository (`PRIVATE` -> `PUBLIC`) with cluster Mermaid topology, cross-repo comparison matrix linking to `docs/ENGINEERING_PROFILE.md`, and live CI badges. | Unifies the 4-repository neuro-symbolic portfolio behind a single executive entry point with verified links and CI status. | Multi-repository portfolio architecture, automated cross-repo link verification, and private-first public promotion. | `spanskikh/spanskikh` `PUBLIC` with green CI; `v0.7.0` annotated tags pushed across cluster. |
+
+---
+
 ## Release `v0.6.0` (Released — 2026-11-22)
 - **Business Goal:** Prepare and promote all four neuro-symbolic cluster repositories (`sandbox-init`, `abstract-ops`, `interview-ops`, `hostel-ops`) to public portfolio status on GitHub with zero secret/PII leakage, verified `CycloneDX` SBOM generation, up-to-date showcase metrics, and green GitHub Actions CI pipelines.
 - **Refinement Record:** [`docs/releases/v0.6.0-refine.md`](docs/releases/v0.6.0-refine.md)

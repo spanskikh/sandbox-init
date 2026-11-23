@@ -6,6 +6,7 @@ Zero-cost, local-first verification baseline for distributed systems and LLM age
 
 ## Cluster Repository Map
 * **System Design & ADRs:** [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Cross-node topology, Docker layer hierarchy, risk matrix, and QA metrics.
+- **Engineering Profile Dossier:** [`docs/ENGINEERING_PROFILE.md`](docs/ENGINEERING_PROFILE.md) — standardized 5-section competence, stack, process, and QA metrics specification.
 * **Domain 1 — Policy & Compliance Auditor:** [`spanskikh/abstract-ops`](https://github.com/spanskikh/abstract-ops) — Formal Z3 verification of RBAC/underwriting rule-sets via CEGIS.
 * **Domain 2 — Grounded Hybrid RAG & Fact-Checker:** [`spanskikh/interview-ops`](https://github.com/spanskikh/interview-ops) — `pgvector` + `tsvector` RRF search with Z3 SSOT anti-hallucination gate.
 * **Domain 3 — Triple-Entry Transactional Ledger:** [`spanskikh/hostel-ops`](https://github.com/spanskikh/hostel-ops) — Triple-entry accounting, anti-overbooking, and housekeeping state machine.
