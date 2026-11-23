@@ -2,6 +2,21 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.9.0] - 2026-11-23 — CR-025: Cross-Repo `FastMCP` `stdio` Supervisor/Worker Orchestrator
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated unverified multi-agent handoff gaps across the 4-repository neuro-symbolic cluster by introducing a single-command `FastMCP` `stdio` Supervisor/Worker orchestrator (`sandbox-init -> abstract-ops -> interview-ops -> hostel-ops`) with deterministic Z3 `SAT`/`UNSAT` gating at every inter-agent hop and zero `stdout` banner pollution.
+- **Traceability:** Change Request `CR-025` implemented in `sandbox-init` (`src/sandbox_init/orchestrator.py`, `scripts/run_supervisor_chain.sh`, `tests/test_orchestrator.py`, `docs/dev-log/20261123-133300_cr-025_supervisor-worker-orchestrator.py`).
+
+### Added & Changed
+- `src/sandbox_init/orchestrator.py` (`CR-025` / `CAPA-002`): Added `WorkerHopResult` and `OrchestrationReport` (`Pydantic v2`), `build_default_sat_payloads`, `build_unsat_payloads`, `run_supervisor_chain`, and `--scenario sat|unsat-*|all` CLI orchestrating `check_cluster_plan`, `audit_policy_ruleset`, `audit_cv_proposal`, and `audit_hostel_checkin` over `FastMCP` `stdio` while preserving 12-tool namespace disjointness.
+- `scripts/run_supervisor_chain.sh` & `tests/test_orchestrator.py` (`CR-025` / `CAPA-003`): Added executable single-command Supervisor/Worker chain runner (`--dry-run`, `PAGER=cat`, `<= 15` summary lines via `./scripts/run_logged.sh`) and 8 offline contract test executions covering `SAT` nominal progression, per-hop `UNSAT` counterexample short-circuiting, `--no-short-circuit` aggregation, and isolated single-repo fallback.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr025_ruff -- .venv/bin/ruff check src tests`: `All checks passed!` (`0` errors).
+- `./scripts/run_logged.sh cr025_mypy -- .venv/bin/mypy src tests --strict`: `Success: no issues found in 21 source files`.
+- `./scripts/run_logged.sh cr025_pytest -- .venv/bin/pytest -v -m "not integration"`: `48 passed, 3 deselected`.
+- `./scripts/run_supervisor_chain.sh --scenario all --format summary`: `5/5` (`1` full 4-hop `SAT` + `4` per-hop `UNSAT` short-circuit proofs) verified over `FastMCP` `stdio`.
+
 ## [0.9.0] - 2026-11-23 — CR-024: Host/Docker Topology-Aware Integration Runner
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated host vs. Docker network and filesystem topology mismatches (`http://ollama:11434`, `host.docker.internal:15432`, `/app/data/*.duckdb`) that required manual `.env` overrides when running live `@pytest.mark.integration` verification across `hippo` and `rhino`.

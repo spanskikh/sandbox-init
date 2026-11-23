@@ -43,6 +43,10 @@ flowchart LR
 ./scripts/run_integration.sh --dry-run
 ./scripts/run_integration.sh
 
+# Cross-repo FastMCP stdio Supervisor/Worker Z3 chain (CR-025)
+./scripts/run_supervisor_chain.sh --dry-run
+./scripts/run_supervisor_chain.sh --scenario all --format summary
+
 # Containerized verification
 docker compose build verifier
 docker compose run --rm verifier sh -c "ruff check src tests && mypy src tests && pytest -v"
