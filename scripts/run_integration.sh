@@ -7,7 +7,15 @@ export GH_PAGER=cat
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PROJECTS_DIR="$(cd "${ROOT_DIR}/.." && pwd)"
-TOPOLOGY_PY="${ROOT_DIR}/.venv/bin/python"
+if [ -z "${PYTHON_BIN:-}" ]; then
+  if [ -x "${ROOT_DIR}/.venv/bin/python" ]; then
+    PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
+  elif command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="$(command -v python3)"
+  else
+    PYTHON_BIN="python"
+  fi
+fi
 
 DRY_RUN=0
 ALL_REPOS=0
@@ -54,10 +62,11 @@ for repo_name in "${REPOS[@]}"; do
       set +a
     fi
 
-    eval "$(
-      PYTHONPATH="${ROOT_DIR}/src" "${TOPOLOGY_PY}" \
+    topology_env="$(
+      PYTHONPATH="${ROOT_DIR}/src" "${PYTHON_BIN}" \
         -m sandbox_init.topology --format env --repo-root "${target_repo}"
-    )"
+    )" || exit 1
+    eval "${topology_env}"
 
     task_slug="cr024_integration_${repo_name//-/_}"
     if [ "${DRY_RUN}" -eq 1 ]; then

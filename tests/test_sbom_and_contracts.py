@@ -127,7 +127,8 @@ def test_cross_cluster_z3_budget_and_namespace_disjointness() -> None:
         if not candidate.is_dir():
             continue
         meta = tomllib.loads((candidate / "pyproject.toml").read_text(encoding="utf-8"))
-        assert meta["project"]["version"] == "0.8.0"
+        expected_ver = "0.9.1" if svc.name == "sandbox-init" else "0.9.0"
+        assert meta["project"]["version"] == expected_ver
         assert meta["project"]["requires-python"] == ">=3.12"
         actual_tools = _extract_expected_tools_from_test(candidate / "tests/test_mcp_contracts.py")
         assert actual_tools == set(svc.tools)

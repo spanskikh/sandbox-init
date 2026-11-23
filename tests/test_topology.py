@@ -132,6 +132,7 @@ def test_cli_json_and_env_formats(
 
 def test_run_integration_script_dry_run() -> None:
     assert RUNNER_SCRIPT.is_file(), "Missing scripts/run_integration.sh"
+    py_dir = str(Path(sys.executable).resolve().parent)
     proc = subprocess.run(
         ["bash", str(RUNNER_SCRIPT), "--dry-run"],
         cwd=REPO_ROOT,
@@ -139,7 +140,8 @@ def test_run_integration_script_dry_run() -> None:
         text=True,
         check=False,
         env={
-            "PATH": "/usr/bin:/bin",
+            "PATH": f"{py_dir}:/usr/bin:/bin",
+            "PYTHON_BIN": sys.executable,
             "OLLAMA_URL": "http://ollama:11434",
             "POSTGRES_DSN": (
                 "postgresql://dev:devpass@host.docker.internal:15432/interview_ops"

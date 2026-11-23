@@ -2,6 +2,19 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.9.1] - 2026-11-23 — BUG-005: Hosted CI Python Interpreter Fallback in `run_integration.sh`
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Fixed GitHub Actions CI failure (run `45188880471`, `BUG-005`) where `scripts/run_integration.sh` hardcoded `.venv/bin/python` and `tests/test_topology.py::test_run_integration_script_dry_run` stripped the active interpreter directory from `PATH` on hosted runners without a local `.venv`.
+- **Traceability:** Defect fix `BUG-005` (`CR-024` follow-up) in `sandbox-init` (`scripts/run_integration.sh`, `tests/test_topology.py`, `CHANGELOG.md`).
+
+### Added & Changed
+- `scripts/run_integration.sh` (`BUG-005` / `CR-024`): Replaced hardcoded `TOPOLOGY_PY` with `PYTHON_BIN` resolution preferring `.venv/bin/python` when executable and falling back cleanly to `PYTHON_BIN` override, `python3`, or `python`, failing fast if topology export fails.
+- `tests/test_topology.py` (`BUG-005` / `CR-024`): Updated `test_run_integration_script_dry_run` to pass `PYTHON_BIN=sys.executable` and include `Path(sys.executable).resolve().parent` in `PATH` so `--dry-run` succeeds both inside local `.venv` and on hosted CI runners.
+
+### Verification Evidence
+- `./scripts/run_logged.sh bug005_verify -- bash -c '.venv/bin/ruff check src tests && .venv/bin/mypy src tests --strict && .venv/bin/pytest -v -m "not integration"'`: `All checks passed!`, `Success: no issues found in 23 source files`, `53 passed, 3 deselected`.
+- `PYTHON_BIN=.venv/bin/python3 ./scripts/run_integration.sh --dry-run`: Verified topology `--dry-run` override without hardcoded `.venv/bin/python`.
+
 ## [0.9.0] - 2026-11-23 — CR-026: Shared `CycloneDX` PEP 610 `file://` Sanitizer CLI
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated duplicated inline PEP 610 `file://` SBOM sanitization one-liners across CI workflows and test suites (`BUG-004` / `CAPA-007`), centralizing deterministic `CycloneDX` `externalReferences` scrubbing and `/home/` / `/Users/` host-path hygiene enforcement into a single reusable module and CLI.
