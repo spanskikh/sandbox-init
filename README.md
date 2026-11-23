@@ -47,6 +47,10 @@ flowchart LR
 ./scripts/run_supervisor_chain.sh --dry-run
 ./scripts/run_supervisor_chain.sh --scenario all --format summary
 
+# Shared CycloneDX PEP 610 file:// SBOM sanitizer CLI (CR-026 / CAPA-007)
+./scripts/sanitize_sbom.sh --dry-run
+./scripts/sanitize_sbom.sh --all-repos
+
 # Containerized verification
 docker compose build verifier
 docker compose run --rm verifier sh -c "ruff check src tests && mypy src tests && pytest -v"

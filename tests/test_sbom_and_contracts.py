@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import ast
-import json
-import subprocess
 import sys
 import tomllib
 from dataclasses import dataclass
@@ -10,6 +8,11 @@ from pathlib import Path
 
 import pytest
 import z3
+
+from sandbox_init.sbom import (
+    CLUSTER_REQUIRED_PACKAGES,
+    generate_and_sanitize_sbom,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HIPPO_BUDGET_GB = 24
@@ -138,22 +141,18 @@ def test_cyclonedx_sbom_reproducibility_and_hygiene(tmp_path: Path) -> None:
     normalized: list[list[tuple[str, str, str]]] = []
     for idx in (1, 2):
         out = tmp_path / f"sbom_{idx}.cdx.json"
-        subprocess.run([str(cdx_bin), "environment", "-o", str(out)], cwd=REPO_ROOT, check=True)
-        raw = out.read_text(encoding="utf-8")
-        bom = json.loads(raw)
-        for comp in bom.get("components", []):
-            refs = comp.get("externalReferences", [])
-            comp["externalReferences"] = [
-                r for r in refs if not str(r.get("url", "")).startswith("file://")
-            ]
-        sanitized = json.dumps(bom, sort_keys=True)
-        assert "/home/" not in sanitized and "/Users/" not in sanitized
-        assert bom["bomFormat"] == "CycloneDX"
-        comps = sorted(
-            (c["name"], c.get("version", ""), c.get("purl", "")) for c in bom["components"]
+        report = generate_and_sanitize_sbom(
+            out,
+            repo_root=REPO_ROOT,
+            cyclonedx_bin=cdx_bin,
+            verify=True,
+            required_packages=CLUSTER_REQUIRED_PACKAGES,
         )
-        names = {c[0] for c in comps}
-        assert {"pydantic", "z3-solver", "duckdb", "mcp", "httpx"}.issubset(names)
-        normalized.append(comps)
+        sanitized = out.read_text(encoding="utf-8")
+        assert "/home/" not in sanitized and "/Users/" not in sanitized
+        assert "file://" not in sanitized
+        assert report.bom_format == "CycloneDX"
+        assert report.verified is True
+        normalized.append(report.component_fingerprints)
 
     assert normalized[0] == normalized[1]

@@ -2,6 +2,21 @@
 
 All notable changes and formal Change Requests (CRs) for `sandbox-init` are documented in this file.
 
+## [0.9.0] - 2026-11-23 — CR-026: Shared `CycloneDX` PEP 610 `file://` Sanitizer CLI
+### Objective & Risk Mitigated
+- **Closed Residual Risk:** Eliminated duplicated inline PEP 610 `file://` SBOM sanitization one-liners across CI workflows and test suites (`BUG-004` / `CAPA-007`), centralizing deterministic `CycloneDX` `externalReferences` scrubbing and `/home/` / `/Users/` host-path hygiene enforcement into a single reusable module and CLI.
+- **Traceability:** Change Request `CR-026` implemented in `sandbox-init` (`src/sandbox_init/sbom.py`, `scripts/sanitize_sbom.sh`, `tests/test_sbom_sanitizer.py`, `tests/test_sbom_and_contracts.py`, `.github/workflows/ci.yml`, `docs/dev-log/20261123-135200_cr-026_cyclonedx-sbom-sanitizer.py`).
+
+### Added & Changed
+- `src/sandbox_init/sbom.py` (`CR-026` / `CAPA-007`): Added `SbomSanitizeReport` (`Pydantic v2`), `sanitize_cyclonedx_bom`, `verify_sanitized_bom`, `sanitize_sbom_file`, `generate_and_sanitize_sbom`, and `python -m sandbox_init.sbom` CLI (`--input`, `--output`, `--generate`, `--verify`, `--require-pkg`, `--format json|summary`) stripping PEP 610 `file://` URIs across top-level, metadata, and nested components.
+- `scripts/sanitize_sbom.sh`, `.github/workflows/ci.yml`, `tests/test_sbom_and_contracts.py`, & `tests/test_sbom_sanitizer.py` (`CR-026` / `CAPA-003`): Added executable multi-repo SBOM sanitizer runner (`--dry-run`, `--all-repos`, `PAGER=cat`, `<= 15` summary lines via `./scripts/run_logged.sh`), wired CI and reproducibility gates to `sandbox_init.sbom`, and added 5 unit/CLI/idempotency tests.
+
+### Verification Evidence
+- `./scripts/run_logged.sh cr026_ruff -- .venv/bin/ruff check src tests`: `All checks passed!` (`0` errors).
+- `./scripts/run_logged.sh cr026_mypy -- .venv/bin/mypy src tests --strict`: `Success: no issues found in 23 source files`.
+- `./scripts/run_logged.sh cr026_pytest -- .venv/bin/pytest -v -m "not integration"`: `53 passed, 3 deselected`.
+- `./scripts/sanitize_sbom.sh --dry-run` & `./scripts/sanitize_sbom.sh --all-repos`: `4/4` cluster repositories sanitized into `~/projects/tmp/*.sbom.cdx.json` with `verified=True` and `0` `file://` or host-path leaks.
+
 ## [0.9.0] - 2026-11-23 — CR-025: Cross-Repo `FastMCP` `stdio` Supervisor/Worker Orchestrator
 ### Objective & Risk Mitigated
 - **Closed Residual Risk:** Eliminated unverified multi-agent handoff gaps across the 4-repository neuro-symbolic cluster by introducing a single-command `FastMCP` `stdio` Supervisor/Worker orchestrator (`sandbox-init -> abstract-ops -> interview-ops -> hostel-ops`) with deterministic Z3 `SAT`/`UNSAT` gating at every inter-agent hop and zero `stdout` banner pollution.
