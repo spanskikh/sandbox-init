@@ -315,14 +315,20 @@ def _judge_doc_with_ollama(model: str, markdown: str) -> DocRubricScore:
     prompt = (
         "Score this repository documentation for a Senior AI QA / SDET / Test Architect role. "
         "Return strict JSON matching keys: completeness (1-5), style_consistency (1-5), "
-        "interviewer_market_value (1-5), rationale (string). "
+        "interviewer_market_value (1-5), rationale (concise string under 250 chars). "
         "Penalize generic hype without proofs.\n\n"
         f"{markdown[:4000]}"
     )
     resp = httpx.post(
         f"{OLLAMA_URL}/api/generate",
-        json={"model": model, "prompt": prompt, "format": "json", "stream": False},
-        timeout=60.0,
+        json={
+            "model": model,
+            "prompt": prompt,
+            "format": DocRubricScore.model_json_schema(),
+            "stream": False,
+            "options": {"temperature": 0.0},
+        },
+        timeout=180.0,
     )
     resp.raise_for_status()
     return DocRubricScore.model_validate(json.loads(resp.json()["response"]))
