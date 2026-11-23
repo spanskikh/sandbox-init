@@ -39,6 +39,10 @@ jobs:
       - name: Generate CycloneDX SBOM
         run: cyclonedx-py environment -o sbom.cdx.json
 
+      - name: Verify CycloneDX SBOM schema & hygiene
+        run: |
+          python -c 'import json; d=json.load(open("sbom.cdx.json")); assert d["bomFormat"]=="CycloneDX"; names={c["name"] for c in d["components"]}; assert {"z3-solver","pydantic"}.issubset(names); assert "/home/" not in json.dumps(d)'
+
       - name: Upload CycloneDX SBOM artifact
         uses: actions/upload-artifact@v4
         with:
