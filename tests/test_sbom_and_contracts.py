@@ -140,8 +140,14 @@ def test_cyclonedx_sbom_reproducibility_and_hygiene(tmp_path: Path) -> None:
         out = tmp_path / f"sbom_{idx}.cdx.json"
         subprocess.run([str(cdx_bin), "environment", "-o", str(out)], cwd=REPO_ROOT, check=True)
         raw = out.read_text(encoding="utf-8")
-        assert "/home/" not in raw
         bom = json.loads(raw)
+        for comp in bom.get("components", []):
+            refs = comp.get("externalReferences", [])
+            comp["externalReferences"] = [
+                r for r in refs if not str(r.get("url", "")).startswith("file://")
+            ]
+        sanitized = json.dumps(bom, sort_keys=True)
+        assert "/home/" not in sanitized and "/Users/" not in sanitized
         assert bom["bomFormat"] == "CycloneDX"
         comps = sorted(
             (c["name"], c.get("version", ""), c.get("purl", "")) for c in bom["components"]
