@@ -37,7 +37,9 @@ jobs:
         run: pytest -v -m "not integration"
 
       - name: Generate CycloneDX SBOM
-        run: cyclonedx-py environment -o sbom.cdx.json
+        run: |
+          cyclonedx-py environment -o sbom.cdx.json
+          python -c 'import json, pathlib; p = pathlib.Path("sbom.cdx.json"); d = json.loads(p.read_text()); [c.__setitem__("externalReferences", [r for r in c.get("externalReferences", []) if not str(r.get("url", "")).startswith("file://")]) for c in d.get("components", [])]; p.write_text(json.dumps(d, indent=2) + "\n")'
 
       - name: Verify CycloneDX SBOM schema & hygiene
         run: |
